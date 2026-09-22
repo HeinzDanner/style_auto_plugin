@@ -1,0 +1,1414 @@
+{
+    "usefallbackstyleforunknownvalues": true,
+    "allownamemismatchfallback": true,
+    "compactlegend": false,
+    "enable_advanced_road_features": true,
+    "enable_advanced_building_features": true,
+    "enable_building_edge_smoothing": true,
+    "enable_building_drop_shadow": true,
+    "enable_building_labels": true,
+    "enable_landuse_labels": true,
+    "enable_advanced_point_features": true,
+    "style_profiles": [
+        {
+            "enabled": true,
+            "id": "roads_fclass_qml",
+            "label": "Roads via fclass QML",
+            "priority": 120,
+            "match": {
+                "geometry_type": "line",
+                "field_hints": [
+                    "fclass",
+                    "highway"
+                ],
+                "preferred_field_order": [
+                    "code",
+                    "fclass",
+                    "highway"
+                ],
+                "value_hints": [
+                    "motorway",
+                    "motorway_link",
+                    "trunk",
+                    "trunk_link",
+                    "primary",
+                    "primary_link",
+                    "secondary",
+                    "secondary_link",
+                    "tertiary",
+                    "tertiary_link",
+                    "unclassified",
+                    "residential",
+                    "living_street",
+                    "service"
+                ],
+                "name_hints": [
+                    "road",
+                    "roads",
+                    "street",
+                    "straße",
+                    "strasse"
+                ],
+                "min_match_score": 2
+            },
+            "style_source": {
+                "qml_path": "styles/roads_fclass.qml",
+                "use_qml_first": true,
+                "fallback_to_rules": true
+            },
+            "field_ruleset": {
+                "enabled": true,
+                "field_name": "fclass",
+                "priority": 100,
+                "fallbackstyle": {
+                    "color": "#bdbdbd",
+                    "width": 0.2,
+                    "penstyle": "solid"
+                },
+                "rules": [
+                    {
+                        "enabled": true,
+                        "value": "motorway",
+                        "label": "Motorway",
+                        "style": {
+                            "color": "#d73027",
+                            "width": 1.1,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "motorway_link",
+                        "label": "Motorway Link",
+                        "style": {
+                            "color": "#ef6548",
+                            "width": 0.82,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "trunk",
+                        "label": "Trunk",
+                        "style": {
+                            "color": "#fc8d59",
+                            "width": 0.95,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "trunk_link",
+                        "label": "Trunk Link",
+                        "style": {
+                            "color": "#fdbb84",
+                            "width": 0.72,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "primary",
+                        "label": "Primary",
+                        "style": {
+                            "color": "#fdae61",
+                            "width": 0.75,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "primary_link",
+                        "label": "Primary Link",
+                        "style": {
+                            "color": "#fdd49e",
+                            "width": 0.58,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "secondary",
+                        "label": "Secondary",
+                        "style": {
+                            "color": "#fee08b",
+                            "width": 0.58,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "secondary_link",
+                        "label": "Secondary Link",
+                        "style": {
+                            "color": "#fff7bc",
+                            "width": 0.46,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "tertiary",
+                        "label": "Tertiary",
+                        "style": {
+                            "color": "#abd9e9",
+                            "width": 0.44,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "tertiary_link",
+                        "label": "Tertiary Link",
+                        "style": {
+                            "color": "#d0ecf4",
+                            "width": 0.36,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "unclassified",
+                        "label": "Unclassified",
+                        "style": {
+                            "color": "#91bfdb",
+                            "width": 0.3,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "residential",
+                        "label": "Residential",
+                        "style": {
+                            "color": "#74add1",
+                            "width": 0.28,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "living_street",
+                        "label": "Living Street",
+                        "style": {
+                            "color": "#bcbddc",
+                            "width": 0.24,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "service",
+                        "label": "Service",
+                        "style": {
+                            "color": "#d9d9d9",
+                            "width": 0.16,
+                            "penstyle": "dot"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": false,
+            "id": "roads_highway_qml",
+            "label": "Roads via highway QML",
+            "priority": 110,
+            "match": {
+                "geometry_type": "line",
+                "field_hints": [
+                    "highway",
+                    "fclass"
+                ],
+                "preferred_field_order": [
+                    "highway",
+                    "fclass"
+                ],
+                "value_hints": [
+                    "motorway",
+                    "motorway_link",
+                    "trunk",
+                    "trunk_link",
+                    "primary",
+                    "primary_link",
+                    "secondary",
+                    "secondary_link",
+                    "tertiary",
+                    "tertiary_link",
+                    "unclassified",
+                    "residential",
+                    "living_street",
+                    "service"
+                ],
+                "name_hints": [
+                    "road",
+                    "roads",
+                    "street",
+                    "straße",
+                    "strasse"
+                ],
+                "min_match_score": 4
+            },
+            "style_source": {
+                "qml_path": "styles/roads_highway.qml",
+                "use_qml_first": true,
+                "fallback_to_rules": true
+            },
+            "field_ruleset": {
+                "enabled": true,
+                "field_name": "highway",
+                "priority": 95,
+                "fallbackstyle": {
+                    "color": "#bdbdbd",
+                    "width": 0.2,
+                    "penstyle": "solid"
+                },
+                "rules": [
+                    {
+                        "enabled": true,
+                        "value": "motorway",
+                        "label": "Motorway",
+                        "style": {
+                            "color": "#d73027",
+                            "width": 1.1,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "motorway_link",
+                        "label": "Motorway Link",
+                        "style": {
+                            "color": "#ef6548",
+                            "width": 0.82,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "trunk",
+                        "label": "Trunk",
+                        "style": {
+                            "color": "#fc8d59",
+                            "width": 0.95,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "trunk_link",
+                        "label": "Trunk Link",
+                        "style": {
+                            "color": "#fdbb84",
+                            "width": 0.72,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "primary",
+                        "label": "Primary",
+                        "style": {
+                            "color": "#fdae61",
+                            "width": 0.75,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "primary_link",
+                        "label": "Primary Link",
+                        "style": {
+                            "color": "#fdd49e",
+                            "width": 0.58,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "secondary",
+                        "label": "Secondary",
+                        "style": {
+                            "color": "#fee08b",
+                            "width": 0.58,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "secondary_link",
+                        "label": "Secondary Link",
+                        "style": {
+                            "color": "#fff7bc",
+                            "width": 0.46,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "tertiary",
+                        "label": "Tertiary",
+                        "style": {
+                            "color": "#abd9e9",
+                            "width": 0.44,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "tertiary_link",
+                        "label": "Tertiary Link",
+                        "style": {
+                            "color": "#d0ecf4",
+                            "width": 0.36,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "unclassified",
+                        "label": "Unclassified",
+                        "style": {
+                            "color": "#91bfdb",
+                            "width": 0.3,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "residential",
+                        "label": "Residential",
+                        "style": {
+                            "color": "#74add1",
+                            "width": 0.28,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "living_street",
+                        "label": "Living Street",
+                        "style": {
+                            "color": "#bcbddc",
+                            "width": 0.24,
+                            "penstyle": "solid"
+                        }
+                    },
+                    {
+                        "enabled": true,
+                        "value": "service",
+                        "label": "Service",
+                        "style": {
+                            "color": "#d9d9d9",
+                            "width": 0.16,
+                            "penstyle": "dot"
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "layerrulesets": [
+        {
+            "enabled": true,
+            "priority": 100,
+            "match": {
+                "geometry_type": "line",
+                "field_hints": [
+                    "fclass",
+                    "highway"
+                ],
+                "preferred_field_order": [
+                    "fclass",
+                    "highway"
+                ],
+                "value_hints": [
+                    "motorway",
+                    "motorway_link",
+                    "trunk",
+                    "trunk_link",
+                    "primary",
+                    "primary_link",
+                    "secondary",
+                    "secondary_link",
+                    "tertiary",
+                    "tertiary_link",
+                    "unclassified",
+                    "residential",
+                    "living_street",
+                    "service"
+                ],
+                "name_hints": [
+                    "road",
+                    "roads",
+                    "street",
+                    "straße",
+                    "strasse"
+                ],
+                "min_match_score": 4
+            },
+            "fieldrulesets": [
+                {
+                    "enabled": true,
+                    "field_name": "fclass",
+                    "priority": 100,
+                    "fallbackstyle": {
+                        "color": "#bdbdbd",
+                        "width": 0.2,
+                        "penstyle": "solid"
+                    },
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "motorway",
+                            "label": "Motorway",
+                            "style": {
+                                "color": "#d73027",
+                                "width": 1.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "motorway_link",
+                            "label": "Motorway Link",
+                            "style": {
+                                "color": "#ef6548",
+                                "width": 0.82,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "trunk",
+                            "label": "Trunk",
+                            "style": {
+                                "color": "#fc8d59",
+                                "width": 0.95,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "trunk_link",
+                            "label": "Trunk Link",
+                            "style": {
+                                "color": "#fdbb84",
+                                "width": 0.72,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "primary",
+                            "label": "Primary",
+                            "style": {
+                                "color": "#fdae61",
+                                "width": 0.75,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "primary_link",
+                            "label": "Primary Link",
+                            "style": {
+                                "color": "#fdd49e",
+                                "width": 0.58,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "secondary",
+                            "label": "Secondary",
+                            "style": {
+                                "color": "#fee08b",
+                                "width": 0.58,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "secondary_link",
+                            "label": "Secondary Link",
+                            "style": {
+                                "color": "#fff7bc",
+                                "width": 0.46,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "tertiary",
+                            "label": "Tertiary",
+                            "style": {
+                                "color": "#abd9e9",
+                                "width": 0.44,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "tertiary_link",
+                            "label": "Tertiary Link",
+                            "style": {
+                                "color": "#d0ecf4",
+                                "width": 0.36,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "unclassified",
+                            "label": "Unclassified",
+                            "style": {
+                                "color": "#91bfdb",
+                                "width": 0.3,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "residential",
+                            "label": "Residential",
+                            "style": {
+                                "color": "#74add1",
+                                "width": 0.28,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "living_street",
+                            "label": "Living Street",
+                            "style": {
+                                "color": "#bcbddc",
+                                "width": 0.24,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "service",
+                            "label": "Service",
+                            "style": {
+                                "color": "#d9d9d9",
+                                "width": 0.16,
+                                "penstyle": "dot"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "enabled": true,
+                    "field_name": "highway",
+                    "priority": 95,
+                    "fallbackstyle": {
+                        "color": "#bdbdbd",
+                        "width": 0.2,
+                        "penstyle": "solid"
+                    },
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "motorway",
+                            "label": "Motorway",
+                            "style": {
+                                "color": "#d73027",
+                                "width": 1.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "motorway_link",
+                            "label": "Motorway Link",
+                            "style": {
+                                "color": "#ef6548",
+                                "width": 0.82,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "trunk",
+                            "label": "Trunk",
+                            "style": {
+                                "color": "#fc8d59",
+                                "width": 0.95,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "trunk_link",
+                            "label": "Trunk Link",
+                            "style": {
+                                "color": "#fdbb84",
+                                "width": 0.72,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "primary",
+                            "label": "Primary",
+                            "style": {
+                                "color": "#fdae61",
+                                "width": 0.75,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "primary_link",
+                            "label": "Primary Link",
+                            "style": {
+                                "color": "#fdd49e",
+                                "width": 0.58,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "secondary",
+                            "label": "Secondary",
+                            "style": {
+                                "color": "#fee08b",
+                                "width": 0.58,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "secondary_link",
+                            "label": "Secondary Link",
+                            "style": {
+                                "color": "#fff7bc",
+                                "width": 0.46,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "tertiary",
+                            "label": "Tertiary",
+                            "style": {
+                                "color": "#abd9e9",
+                                "width": 0.44,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "tertiary_link",
+                            "label": "Tertiary Link",
+                            "style": {
+                                "color": "#d0ecf4",
+                                "width": 0.36,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "unclassified",
+                            "label": "Unclassified",
+                            "style": {
+                                "color": "#91bfdb",
+                                "width": 0.3,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "residential",
+                            "label": "Residential",
+                            "style": {
+                                "color": "#74add1",
+                                "width": 0.28,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "living_street",
+                            "label": "Living Street",
+                            "style": {
+                                "color": "#bcbddc",
+                                "width": 0.24,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "service",
+                            "label": "Service",
+                            "style": {
+                                "color": "#d9d9d9",
+                                "width": 0.16,
+                                "penstyle": "dot"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "enabled": true,
+            "priority": 40,
+            "match": {
+                "geometry_type": "line",
+                "field_hints": [
+                    "fclass"
+                ],
+                "preferred_field_order": [
+                    "fclass"
+                ],
+                "name_hints": [
+                    "waterways",
+                    "gis_osm_waterways_free"
+                ],
+                "min_match_score": 3
+            },
+            "fieldrulesets": [
+                {
+                    "enabled": true,
+                    "field_name": "fclass",
+                    "priority": 40,
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "river",
+                            "label": "River",
+                            "style": {
+                                "color": "#2166ac",
+                                "width": 0.8,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "canal",
+                            "label": "Canal",
+                            "style": {
+                                "color": "#1c7fb5",
+                                "width": 0.7,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "stream",
+                            "label": "Stream",
+                            "style": {
+                                "color": "#67a9cf",
+                                "width": 0.5,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "drain",
+                            "label": "Drain",
+                            "style": {
+                                "color": "#a6cee3",
+                                "width": 0.3,
+                                "penstyle": "dash"
+                            }
+                        }
+                    ],
+                    "fallbackstyle": {
+                        "color": "#c7e9f1",
+                        "width": 0.3,
+                        "penstyle": "solid"
+                    }
+                }
+            ]
+        },
+        {
+            "enabled": true,
+            "priority": 50,
+            "match": {
+                "geometry_type": "polygon",
+                "field_hints": [
+                    "fclass"
+                ],
+                "preferred_field_order": [
+                    "fclass"
+                ],
+                "name_hints": [
+                    "water",
+                    "gis_osm_water_a_free"
+                ],
+                "min_match_score": 3
+            },
+            "fieldrulesets": [
+                {
+                    "enabled": true,
+                    "field_name": "fclass",
+                    "priority": 50,
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "water",
+                            "label": "Water",
+                            "style": {
+                                "color": "#a6cee3",
+                                "width": 0.2,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "riverbank",
+                            "label": "Riverbank",
+                            "style": {
+                                "color": "#8da0cb",
+                                "width": 0.2,
+                                "penstyle": "solid"
+                            }
+                        }
+                    ],
+                    "fallbackstyle": {
+                        "color": "#a6cee3",
+                        "width": 0.2,
+                        "penstyle": "solid"
+                    }
+                }
+            ]
+        },
+        {
+            "enabled": true,
+            "priority": 100,
+            "match": {
+                "geometry_type": "polygon",
+                "field_hints": [
+                    "fclass"
+                ],
+                "preferred_field_order": [
+                    "fclass"
+                ],
+                "name_hints": [
+                    "landuse",
+                    "gis_osm_landuse_a_free"
+                ],
+                "min_match_score": 3
+            },
+            "fieldrulesets": [
+                {
+                    "enabled": true,
+                    "field_name": "fclass",
+                    "priority": 100,
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "residential",
+                            "label": "Residential",
+                            "style": {
+                                "color": "#f2eae2",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "commercial",
+                            "label": "Commercial",
+                            "style": {
+                                "color": "#f2ebd9",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "retail",
+                            "label": "Retail",
+                            "style": {
+                                "color": "#f2e1e1",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "industrial",
+                            "label": "Industrial",
+                            "style": {
+                                "color": "#ebdbe8",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "grass",
+                            "label": "Grass",
+                            "style": {
+                                "color": "#cdebb0",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "park",
+                            "label": "Park",
+                            "style": {
+                                "color": "#a6d96a",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "forest",
+                            "label": "Forest",
+                            "style": {
+                                "color": "#add19e",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "scrub",
+                            "label": "Scrub",
+                            "style": {
+                                "color": "#b5c58f",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "allotments",
+                            "label": "Allotments",
+                            "style": {
+                                "color": "#c1d4a3",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "farmland",
+                            "label": "Farmland",
+                            "style": {
+                                "color": "#e9f5db",
+                                "width": 0.0,
+                                "penstyle": "nopen"
+                            }
+                        }
+                    ],
+                    "fallbackstyle": {
+                        "color": "#e0e0e0",
+                        "width": 0.0,
+                        "penstyle": "nopen"
+                    }
+                }
+            ]
+        },
+        {
+            "enabled": true,
+            "priority": 100,
+            "match": {
+                "geometry_type": "polygon",
+                "field_hints": [
+                    "type",
+                    "building",
+                    "fclass"
+                ],
+                "preferred_field_order": [
+                    "type",
+                    "building",
+                    "fclass"
+                ],
+                "name_hints": [
+                    "building",
+                    "buildings",
+                    "gebäude",
+                    "gebaeude"
+                ],
+                "min_match_score": 4
+            },
+            "fieldrulesets": [
+                {
+                    "enabled": true,
+                    "field_name": "type",
+                    "priority": 100,
+                    "fallbackstyle": {
+                        "color": "#d7dadc",
+                        "outline_color": "#b7babc",
+                        "width": 0.1,
+                        "style": "solid"
+                    },
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "apartments",
+                            "label": "Apartments",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "house",
+                            "label": "House",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "detached",
+                            "label": "Detached",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "semidetached_house",
+                            "label": "Semidetached House",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "terrace",
+                            "label": "Terrace",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "bungalow",
+                            "label": "Bungalow",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "residential",
+                            "label": "Residential",
+                            "style": {
+                                "color": "#ebdcd9",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "commercial",
+                            "label": "Commercial",
+                            "style": {
+                                "color": "#d7dadc",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "industrial",
+                            "label": "Industrial",
+                            "style": {
+                                "color": "#d7dadc",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "retail",
+                            "label": "Retail",
+                            "style": {
+                                "color": "#ebd0cc",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "school",
+                            "label": "School",
+                            "style": {
+                                "color": "#e4dbe3",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "kindergarten",
+                            "label": "Kindergarten",
+                            "style": {
+                                "color": "#e4dbe3",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "hospital",
+                            "label": "Hospital",
+                            "style": {
+                                "color": "#ebd0cc",
+                                "width": 0.1,
+                                "penstyle": "solid"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "enabled": true,
+            "priority": 200,
+            "match": {
+                "geometry_type": "line",
+                "field_hints": [
+                    "code"
+                ],
+                "preferred_field_order": [
+                    "code"
+                ],
+                "min_match_score": 3
+            },
+            "fieldrulesets": [
+                {
+                    "enabled": true,
+                    "field_name": "code",
+                    "priority": 90,
+                    "fallbackstyle": {
+                        "color": "#cccccc",
+                        "width": 0.2,
+                        "penstyle": "solid"
+                    },
+                    "rules": [
+                        {
+                            "enabled": true,
+                            "value": "5111",
+                            "label": "Motorway",
+                            "style": {
+                                "color": "#d73027",
+                                "width": 1.1,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5112",
+                            "label": "Motorway Link",
+                            "style": {
+                                "color": "#ef6548",
+                                "width": 0.82,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5113",
+                            "label": "Trunk",
+                            "style": {
+                                "color": "#fc8d59",
+                                "width": 0.95,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5114",
+                            "label": "Trunk Link",
+                            "style": {
+                                "color": "#fdbb84",
+                                "width": 0.72,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5121",
+                            "label": "Primary",
+                            "style": {
+                                "color": "#fdae61",
+                                "width": 0.75,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5122",
+                            "label": "Tertiary",
+                            "style": {
+                                "color": "#abd9e9",
+                                "width": 0.44,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5123",
+                            "label": "Primary Link",
+                            "style": {
+                                "color": "#fdd49e",
+                                "width": 0.58,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5124",
+                            "label": "Secondary Link",
+                            "style": {
+                                "color": "#fff7bc",
+                                "width": 0.46,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5125",
+                            "label": "Tertiary Link",
+                            "style": {
+                                "color": "#d0ecf4",
+                                "width": 0.36,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5141",
+                            "label": "Secondary",
+                            "style": {
+                                "color": "#fee08b",
+                                "width": 0.58,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5151",
+                            "label": "Unclassified",
+                            "style": {
+                                "color": "#91bfdb",
+                                "width": 0.3,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5152",
+                            "label": "Collector",
+                            "style": {
+                                "color": "#fee08b",
+                                "width": 0.45,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5153",
+                            "label": "Local / Residential",
+                            "style": {
+                                "color": "#74add1",
+                                "width": 0.3,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5154",
+                            "label": "Minor road",
+                            "style": {
+                                "color": "#abd9e9",
+                                "width": 0.25,
+                                "penstyle": "solid"
+                            }
+                        },
+                        {
+                            "enabled": true,
+                            "value": "5155",
+                            "label": "Very minor road",
+                            "style": {
+                                "color": "#d0ecf4",
+                                "width": 0.2,
+                                "penstyle": "solid"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "enable_road_labels": true,
+    "custom_mappings": [
+        {
+            "active": true,
+            "geom": "Line",
+            "value": "motorway",
+            "style": "autobahn",
+            "label": "Autobahn"
+        },
+        {
+            "active": true,
+            "geom": "Line",
+            "value": "tertiary",
+            "style": "nebenstrasse",
+            "label": "Nebenstraße"
+        },
+        {
+            "active": true,
+            "geom": "Polygon",
+            "value": "apartments",
+            "style": "wohngebaeude",
+            "label": "Wohngebäude"
+        },
+        {
+            "active": true,
+            "geom": "Polygon",
+            "value": "commercial",
+            "style": "gewerbegebaeude",
+            "label": "Gewerbe / Industrie"
+        },
+        {
+            "active": true,
+            "geom": "Line",
+            "value": "primary",
+            "style": "hauptstrasse",
+            "label": "ddd"
+        },
+        {
+            "active": true,
+            "geom": "Line",
+            "value": "secondary",
+            "style": "landstrasse",
+            "label": "eeee"
+        },
+        {
+            "active": true,
+            "geom": "Point",
+            "value": "hospital",
+            "style": "hospital.svg",
+            "label": "Krankenhaus"
+        }
+    ],
+    "road_style_mode": 2
+}

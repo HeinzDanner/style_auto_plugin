@@ -1,0 +1,14 @@
+[general]
+name=Style Auto Plugin
+description=Automatically applies categorized styles to the active layer using JSON-based rules.
+version=0.1.0
+qgisMinimumVersion=3.28
+author=Heinz Danner
+email=hdanner@gmx.de
+about=Applies categorized styles to the active QGIS layer based on JSON configuration. Rules can match by layer name pattern, geometry type, field name, and priority. Unknown values can optionally use a fallback style.
+category=Vector
+tags=style,symbology,json,vector,automation
+experimental=True
+deprecated=False
+hasProcessingProvider=False
+server=False

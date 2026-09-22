@@ -1,0 +1,695 @@
+{
+  "allow_name_mismatch_fallback": true,
+  "layer_rulesets": [
+    {
+      "enabled": true,
+      "priority": 100,
+      "layer_name_pattern": "rbs_strab",
+      "name_hints": ["strab", "strasse", "straße", "street", "road", "verkehr"],
+      "geometry_type": "line",
+      "field_hints": ["strabtypname", "street_type", "type", "class", "category"],
+      "value_hints": [
+        "Autobahnabschnitt",
+        "Strasse",
+        "Verwaltungsweg",
+        "Gewässerabschnitt",
+        "Forstamt/Jagenabschnitt",
+        "fiktive Strasse Kreuzung1=Kreuzung2"
+      ],
+      "min_match_score": 6,
+      "field_rulesets": [
+        {
+          "enabled": true,
+          "priority": 100,
+          "field_name": "strabtypname",
+          "fallback_style": {
+            "color": "#999999",
+            "width": 0.2,
+            "pen_style": "solid",
+            "opacity": 0.8
+          },
+          "rules": [
+            {
+              "enabled": true,
+              "value": "Autobahnabschnitt",
+              "label": null,
+              "style": {
+                "color": "#f28c00",
+                "width": 1.2,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Strasse",
+              "label": null,
+              "style": {
+                "color": "#f2a100",
+                "width": 0.45,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Verwaltungsweg",
+              "label": null,
+              "style": {
+                "color": "#808080",
+                "width": 0.2,
+                "pen_style": "dash",
+                "opacity": 0.9
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Gewässerabschnitt",
+              "label": null,
+              "style": {
+                "color": "#4da6ff",
+                "width": 0.5,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Forstamt/Jagenabschnitt",
+              "label": null,
+              "style": {
+                "color": "#4f8a3c",
+                "width": 0.3,
+                "pen_style": "dot",
+                "opacity": 0.9
+              }
+            },
+            {
+              "enabled": true,
+              "value": "fiktive Strasse Kreuzung1=Kreuzung2",
+              "label": null,
+              "style": {
+                "color": "#c8a060",
+                "width": 0.15,
+                "pen_style": "dash",
+                "opacity": 0.7
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "enabled": true,
+      "priority": 10,
+      "layer_name_pattern": "",
+      "name_hints": ["strab", "strasse", "straße", "street", "road", "verkehr"],
+      "geometry_type": "line",
+      "field_hints": ["strabtypname", "street_type", "type", "class", "category"],
+      "value_hints": [
+        "Anliegerstraße",
+        "Straße",
+        "Fahrweg",
+        "Fußgängerzone",
+        "Gemeindestraße"
+      ],
+      "min_match_score": 6,
+      "field_rulesets": [
+        {
+          "enabled": true,
+          "priority": 100,
+          "field_name": "strabtypname",
+          "fallback_style": {
+            "color": "#999999",
+            "width": 0.2,
+            "pen_style": "solid",
+            "opacity": 0.8
+          },
+          "rules": [
+            {
+              "enabled": true,
+              "value": "Anliegerstraße",
+              "label": null,
+              "style": {
+                "color": "#d73027",
+                "width": 0.45,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Straße",
+              "label": null,
+              "style": {
+                "color": "#fc8d59",
+                "width": 0.45,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Fahrweg",
+              "label": null,
+              "style": {
+                "color": "#fee090",
+                "width": 0.3,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Fußgängerzone",
+              "label": null,
+              "style": {
+                "color": "#91bfdb",
+                "width": 0.4,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            },
+            {
+              "enabled": true,
+              "value": "Gemeindestraße",
+              "label": null,
+              "style": {
+                "color": "#4575b4",
+                "width": 0.45,
+                "pen_style": "solid",
+                "opacity": 1.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+  "enabled": true,
+  "priority": 50,
+  "layer_name_pattern": "gis_osm_roads",
+  "name_hints": ["road", "roads", "street", "streets", "strasse", "straße", "highway", "verkehr", "transport"],
+  "geometry_type": "line",
+  "field_hints": ["fclass", "highway", "class", "type", "road_type", "street_type", "category"],
+  "value_hints": [
+    "motorway",
+    "motorway_link",
+    "trunk",
+    "trunk_link",
+    "primary",
+    "primary_link",
+    "secondary",
+    "secondary_link",
+    "tertiary",
+    "tertiary_link",
+    "residential",
+    "unclassified",
+    "road",
+    "living_street",
+    "pedestrian",
+    "service",
+    "busway",
+    "bus_guideway",
+    "cycleway",
+    "footway",
+    "path",
+    "bridleway",
+    "steps",
+    "track",
+    "track_grade1",
+    "track_grade2",
+    "track_grade3",
+    "track_grade4",
+    "track_grade5",
+    "construction",
+    "proposed",
+    "corridor",
+    "platform",
+    "raceway",
+    "escape",
+    "rest_area",
+    "services",
+    "elevator",
+    "crossing",
+    "abandoned"
+  ],
+  "min_match_score": 6,
+  "field_rulesets": [
+    {
+      "enabled": true,
+      "priority": 100,
+      "field_name": "fclass",
+      "fallback_style": {
+        "color": "#9e9e9e",
+        "width": 0.18,
+        "pen_style": "dot",
+        "opacity": 0.7
+      },
+      "rules": [
+        {
+          "enabled": true,
+          "value": "motorway",
+          "label": "motorway",
+          "style": {
+            "color": "#d73027",
+            "width": 1.35,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "motorway_link",
+          "label": "motorway_link",
+          "style": {
+            "color": "#ef6548",
+            "width": 0.95,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "trunk",
+          "label": "trunk",
+          "style": {
+            "color": "#fc8d59",
+            "width": 1.15,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "trunk_link",
+          "label": "trunk_link",
+          "style": {
+            "color": "#fdbb84",
+            "width": 0.8,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "primary",
+          "label": "primary",
+          "style": {
+            "color": "#f2a100",
+            "width": 0.95,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "primary_link",
+          "label": "primary_link",
+          "style": {
+            "color": "#f2c14e",
+            "width": 0.72,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "secondary",
+          "label": "secondary",
+          "style": {
+            "color": "#ffd166",
+            "width": 0.78,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "secondary_link",
+          "label": "secondary_link",
+          "style": {
+            "color": "#ffe29a",
+            "width": 0.58,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "tertiary",
+          "label": "tertiary",
+          "style": {
+            "color": "#fff2b2",
+            "width": 0.58,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "tertiary_link",
+          "label": "tertiary_link",
+          "style": {
+            "color": "#fff6cc",
+            "width": 0.42,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "residential",
+          "label": "residential",
+          "style": {
+            "color": "#f7f7f7",
+            "width": 0.4,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "unclassified",
+          "label": "unclassified",
+          "style": {
+            "color": "#ececec",
+            "width": 0.34,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "road",
+          "label": "road",
+          "style": {
+            "color": "#e0e0e0",
+            "width": 0.32,
+            "pen_style": "solid",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "living_street",
+          "label": "living_street",
+          "style": {
+            "color": "#cfe8f3",
+            "width": 0.35,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "pedestrian",
+          "label": "pedestrian",
+          "style": {
+            "color": "#74add1",
+            "width": 0.34,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "service",
+          "label": "service",
+          "style": {
+            "color": "#bdbdbd",
+            "width": 0.25,
+            "pen_style": "solid",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "services",
+          "label": "services",
+          "style": {
+            "color": "#bdbdbd",
+            "width": 0.25,
+            "pen_style": "dash",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "rest_area",
+          "label": "rest_area",
+          "style": {
+            "color": "#c7c7c7",
+            "width": 0.22,
+            "pen_style": "dash",
+            "opacity": 0.9
+          }
+        },
+        {
+          "enabled": true,
+          "value": "busway",
+          "label": "busway",
+          "style": {
+            "color": "#2b8cbe",
+            "width": 0.45,
+            "pen_style": "dash",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "bus_guideway",
+          "label": "bus_guideway",
+          "style": {
+            "color": "#2b8cbe",
+            "width": 0.4,
+            "pen_style": "dot",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "cycleway",
+          "label": "cycleway",
+          "style": {
+            "color": "#41ab5d",
+            "width": 0.25,
+            "pen_style": "solid",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "footway",
+          "label": "footway",
+          "style": {
+            "color": "#8dd3c7",
+            "width": 0.2,
+            "pen_style": "dash",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "path",
+          "label": "path",
+          "style": {
+            "color": "#80b1d3",
+            "width": 0.2,
+            "pen_style": "dot",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "bridleway",
+          "label": "bridleway",
+          "style": {
+            "color": "#a6611a",
+            "width": 0.2,
+            "pen_style": "dash",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "steps",
+          "label": "steps",
+          "style": {
+            "color": "#636363",
+            "width": 0.18,
+            "pen_style": "dot",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "track",
+          "label": "track",
+          "style": {
+            "color": "#8c6d31",
+            "width": 0.22,
+            "pen_style": "dash",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "track_grade1",
+          "label": "track_grade1",
+          "style": {
+            "color": "#8c6d31",
+            "width": 0.24,
+            "pen_style": "solid",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "track_grade2",
+          "label": "track_grade2",
+          "style": {
+            "color": "#a67c52",
+            "width": 0.22,
+            "pen_style": "dash",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "track_grade3",
+          "label": "track_grade3",
+          "style": {
+            "color": "#b08d57",
+            "width": 0.2,
+            "pen_style": "dash",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "track_grade4",
+          "label": "track_grade4",
+          "style": {
+            "color": "#c2a878",
+            "width": 0.18,
+            "pen_style": "dot",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "track_grade5",
+          "label": "track_grade5",
+          "style": {
+            "color": "#d8c3a5",
+            "width": 0.16,
+            "pen_style": "dot",
+            "opacity": 0.95
+          }
+        },
+        {
+          "enabled": true,
+          "value": "construction",
+          "label": "construction",
+          "style": {
+            "color": "#ff7f00",
+            "width": 0.3,
+            "pen_style": "dash",
+            "opacity": 0.85
+          }
+        },
+        {
+          "enabled": true,
+          "value": "proposed",
+          "label": "proposed",
+          "style": {
+            "color": "#fdbf6f",
+            "width": 0.24,
+            "pen_style": "dot",
+            "opacity": 0.8
+          }
+        },
+        {
+          "enabled": true,
+          "value": "corridor",
+          "label": "corridor",
+          "style": {
+            "color": "#6baed6",
+            "width": 0.22,
+            "pen_style": "solid",
+            "opacity": 0.85
+          }
+        },
+        {
+          "enabled": true,
+          "value": "platform",
+          "label": "platform",
+          "style": {
+            "color": "#969696",
+            "width": 0.22,
+            "pen_style": "solid",
+            "opacity": 0.8
+          }
+        },
+        {
+          "enabled": true,
+          "value": "crossing",
+          "label": "crossing",
+          "style": {
+            "color": "#00a6ca",
+            "width": 0.18,
+            "pen_style": "dot",
+            "opacity": 1.0
+          }
+        },
+        {
+          "enabled": true,
+          "value": "elevator",
+          "label": "elevator",
+          "style": {
+            "color": "#8073ac",
+            "width": 0.18,
+            "pen_style": "dot",
+            "opacity": 0.9
+          }
+        },
+        {
+          "enabled": true,
+          "value": "raceway",
+          "label": "raceway",
+          "style": {
+            "color": "#e31a1c",
+            "width": 0.35,
+            "pen_style": "dash",
+            "opacity": 0.9
+          }
+        },
+        {
+          "enabled": true,
+          "value": "escape",
+          "label": "escape",
+          "style": {
+            "color": "#fb9a99",
+            "width": 0.22,
+            "pen_style": "dash",
+            "opacity": 0.85
+          }
+        },
+        {
+          "enabled": true,
+          "value": "abandoned",
+          "label": "abandoned",
+          "style": {
+            "color": "#999999",
+            "width": 0.18,
+            "pen_style": "dot",
+            "opacity": 0.65
+          }
+        }
+      ]
+    }
+  ]
+}
+  ]
+}
