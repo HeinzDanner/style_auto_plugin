@@ -1250,21 +1250,12 @@ class StyleEngine:
 
                 if landuse_score > building_score or (idx_landuse >= 0 and idx_building < 0):
 
-                    if hasattr(self, "apply_landuse_symbol_mapping"):
+                    # REPARATUR: "apply_landuse_symbol_mapping" existierte nie als Methode,
+                    # wodurch der Landuse-Haken (enable_landuse_labels) im Modus 1 wirkungslos blieb.
+                    # Wir nutzen dieselbe Beschriftungs-Logik wie im Modus 2.
+                    self.apply_landuse_advanced_features(layer, enable_labels=enable_landuse_labels)
 
-                        success = self.apply_landuse_symbol_mapping(
-
-                            layer, config=config, reines_einzelstyling=True
-
-                        )
-
-                        if success:
-                            result = {"success": True, "message": "Reines Flächen-Einzelstyling angewendet (Modus 1)."}
-
-                    else:
-
-                        result = {"success": True, "message": "Flächen-Styling im Modus 1 übersprungen."}
-
+                    result = {"success": True, "message": "Reines Flächen-Einzelstyling angewendet (Modus 1)."}
 
                 else:
 
