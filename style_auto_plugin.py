@@ -25,6 +25,22 @@ from .style_config import get_config
 from .style_engine import StyleEngine
 from .style_auto_plugin_dialog import StyleAutoPluginDialog
 
+
+def _get_cfg(config, key, default=None):
+    """Liest einen Wert aus einer Config, egal ob dict oder Objekt mit Attributen."""
+    if isinstance(config, dict):
+        return config.get(key, default)
+    return getattr(config, key, default)
+
+
+def _set_cfg(config, key, value):
+    """Schreibt einen Wert in eine Config, egal ob dict oder Objekt mit Attributen."""
+    if isinstance(config, dict):
+        config[key] = value
+    else:
+        setattr(config, key, value)
+
+
 class StyleAutoPlugin:
     def __init__(self, iface):
         self.iface = iface
@@ -334,11 +350,8 @@ class StyleAutoPlugin:
             {"key": "hospital", "value": "hospital", "label": "Krankenhaus"},
         ]
 
-        # Config sicher auslesen
-        if isinstance(self.config, dict):
-            mappings = self.config.get("custom_mappings", [])
-        else:
-            mappings = getattr(self.config, "custom_mappings", [])
+        # Config sicher auslesen (dict oder Objekt)
+        mappings = _get_cfg(self.config, "custom_mappings", [])
 
         if not isinstance(mappings, list):
             mappings = []
@@ -357,10 +370,7 @@ class StyleAutoPlugin:
                 added += 1
 
         # Die erweiterte Liste zurück in das Config-Objekt brennen
-        if isinstance(self.config, dict):
-            self.config["custom_mappings"] = mappings
-        else:
-            setattr(self.config, "custom_mappings", mappings)
+        _set_cfg(self.config, "custom_mappings", mappings)
 
 
         if hasattr(self, "save_settings"):
