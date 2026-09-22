@@ -91,11 +91,9 @@ Dieses Plugin ist aktuell ein funktionstüchtiger MVP mit Fokus auf automatisier
 ## Bekannte Einschränkungen
 
 - Der Symbolaufbau ist auf die vorhandene Implementierung zugeschnitten.
-- Das korrekte Anwenden der erweiterten Haken im Modus 0 und Modus 1 wird in kommenden Versionen noch strikter verzahnt.
 
 ## Geplanter Ausbau
 
-- Vertiefte Bool-Verdrahtung für die Modi 0 und 1.
 - Weitere vordefinierte Beispielkonfigurationen.
 
 ## Lizenz

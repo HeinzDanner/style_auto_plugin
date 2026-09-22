@@ -52,12 +52,12 @@ class StyleAutoPluginDialog(QDialog):
             QLabel("----------------------------------------------------------------------------------------", self))
 
         # --- GRUPPE 1 & 2 VERSCHMOLZEN: REINE KARTOGRAFISCHE EFFEKTE ---
-        englischer_text = "Cartographic Options (currently only active for Mode 2)"
+        englischer_text = "Cartographic Options (active in Mode 1 and Mode 2)"
         self.group_effects = QGroupBox(self.tr(englischer_text), self)
 
         # Sicherheitsnetz: Übersetzungs-Fallback für die Tester
         if self.group_effects.title() == englischer_text:
-            self.group_effects.setTitle("Kartografische Optionen (vorerst nur für Modus 2 aktiv)")
+            self.group_effects.setTitle("Kartografische Optionen (aktiv in Modus 1 und Modus 2)")
 
         effects_layout = QVBoxLayout(self.group_effects)
 
@@ -383,7 +383,7 @@ class StyleAutoPluginDialog(QDialog):
             "Enable Base Roads Styling": "Basis-Straßenstyling aktivieren",
             "Enable Base Buildings Styling": "Basis-Gebäudestyling aktivieren",
             "Enable Base Points Styling (POIs)": "Basis-Punktstyling (POIs) aktivieren",
-            "Cartographic Options (currently only active for Mode 2)": "Kartografische Optionen (vorerst nur für Modus 2 aktiv)",
+            "Cartographic Options (active in Mode 1 and Mode 2)": "Kartografische Optionen (aktiv in Modus 1 und Modus 2)",
             "Show Road Names (Density-Optimized)": "Straßennamen anzeigen (Dichte-optimiert)",
             "Cartographic Options": "Kartografische Optionen",
             "Enable Building Edge Smoothing": "Gebäudekanten-Glättung aktivieren",
