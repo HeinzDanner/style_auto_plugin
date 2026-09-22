@@ -68,6 +68,20 @@ C:\Users\<Benutzername>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugi
 
 Die Regeln werden standardmäßig aus der Konfigurationsdatei geladen. Das Einstellungsfenster synchronisiert Änderungen der Tester automatisch mit der lokalen JSON-Datei auf der Festplatte des jeweiligen Benutzers.
 
+## Tests
+
+Im Ordner `tests/` liegt eine pytest-Suite:
+
+- `test_style_config.py` prüft rein die Parsing-/Coercion-Logik von `style_config.py` und läuft mit jedem normalen Python-Interpreter, sofern `pytest` installiert ist.
+- `test_style_engine.py` prüft `style_engine.py` funktional mit echten (In-Memory-)QGIS-Layern und benötigt daher den QGIS-eigenen Python-Interpreter (`qgis.core`).
+
+Ausführen unter Windows z.B. mit:
+
+```text
+"C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pip install pytest
+"C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
+```
+
 ## Verwendung
 
 1. Einen passenden Vektorlayer in QGIS laden.

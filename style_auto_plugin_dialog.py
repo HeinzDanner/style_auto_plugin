@@ -180,7 +180,7 @@ class StyleAutoPluginDialog(QDialog):
         self.radio_group = QButtonGroup(self)
 
         # ==============================================================================
-        # --- DIE EINFACHE UND UNZERSTÖRBARE VALUE-WEICHE (Page 4) ---
+        # Standardvorgaben für Custom Single Symbol Mappings vorbereiten/ergänzen
         # ==============================================================================
         import os
         dialog_dir = os.path.dirname(os.path.abspath(__file__))
@@ -224,11 +224,7 @@ class StyleAutoPluginDialog(QDialog):
             # FALLBACK: Wenn keine XML da ist, gilt stur der letzte User-Stand
             if not isinstance(initial_entries, list) or len(initial_entries) == 0:
                 initial_entries = hardcoded_defaults
-        # =============================================================================
-        # Ab hier läuft dein originaler Code von Page 4 völlig unverändert weiter:
-        # ==============================================================================
-        # Ab hier läuft dein originaler Code von Page 4 völlig unverändert weiter:
-        # ==============================================================================
+
         for entry in initial_entries:
             self.create_row_widget(entry)
 

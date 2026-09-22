@@ -192,6 +192,16 @@ class StyleEngine:
         }
 
     def _get_attr(self, obj, *names, default=None):
+        """Liest einen Wert sowohl aus dict-Configs als auch aus Objekt-Configs
+        (z.B. PluginConfig) unter einem oder mehreren möglichen Schlüsseln aus.
+        Konsolidiert die vorher mehrfach duplizierte
+        'isinstance(config, dict) -> .get() else getattr()'-Logik."""
+        if isinstance(obj, dict):
+            for name in names:
+                if name in obj:
+                    return obj[name]
+            return default
+
         for name in names:
             if hasattr(obj, name):
                 return getattr(obj, name)
@@ -332,10 +342,7 @@ class StyleEngine:
 
         config_mappings = []
         if config:
-            if isinstance(config, dict):
-                config_mappings = config.get("custom_mappings", [])
-            else:
-                config_mappings = getattr(config, "custom_mappings", [])
+            config_mappings = self._get_attr(config, "custom_mappings", default=[])
 
         expected_text_values = set()
         expected_code_values = set()
@@ -929,9 +936,6 @@ class StyleEngine:
             if road_base_aktiv is False:
                 # Text-Ausgabe restlos entfernt, die Hänger-Blockade bleibt unzerstörbar!
                 return False, "Laden vom Master-Schalter blockiert."
-        # ==============================================================================
-        # Ab hier läuft dein originaler Code von Page 16 völlig unverändert weiter:
-        # ==============================================================================
         result = layer.loadNamedStyle(qml_path)
         success = False
         detail = ""
@@ -1087,10 +1091,7 @@ class StyleEngine:
         if geom_type == "line":
             road_base_aktiv = True
             if config:
-                if isinstance(config, dict):
-                    road_base_aktiv = config.get("enable_advanced_road_features", True)
-                else:
-                    road_base_aktiv = getattr(config, "enable_advanced_road_features", True)
+                road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
 
             # WENN DER HAKEN "Basis-Straßenstyling aktivieren" AUS IST:
             if road_base_aktiv is False:
@@ -1111,47 +1112,27 @@ class StyleEngine:
                 return self._result(True, "Straßen im Standard-Look belassen (Basis aus).", level="info")
 
         # ==============================================================================
-        # Hier läuft dein originaler Code von Page 19 (Zeile 11) völlig unverändert weiter:
+        # Modus und kartografische Bools EINMALIG bestimmen (vorher hier doppelt berechnet)
+        # REPARATUR: road_style_mode wurde bisher nur per getattr() gelesen, wodurch ein
+        # dict-basiertes Config-Objekt (z.B. aus der Dialog-GUI) immer auf Modus 2 zurückfiel.
         # ==============================================================================
-        # 1. ZUERST: Den Modus sicher deklarieren (Verhindert den NameError!)
         try:
-            mode = int(getattr(config, "road_style_mode", 2))
+            mode = int(self._get_attr(config, "road_style_mode", default=2))
         except (ValueError, TypeError):
             mode = 2
 
-        # Vorhandene Config-Bools synchronisieren
         self.sync_runtime_bools_from_config(config)
 
-        # 2. DANACH: Die global geteilten Klassen-Werte erzwingen
-
-        enable_building_features = bool(getattr(config, "enable_advanced_building_features", True))
-        enable_point_features = bool(getattr(config, "enable_advanced_point_features", True))
-
-        enable_building_labels = StyleEngine.enable_building_labels
-        enable_road_labels = StyleEngine.enable_labels
-        enable_building_smoothing = StyleEngine.enable_building_smoothing
-        enable_building_shadow = StyleEngine.enable_building_shadow
-        enable_landuse_labels = StyleEngine.enable_landuse_labels
-        enable_road_features = StyleEngine.enable_advanced_road_features
-
-        # HIERFOLGT DEIN ORIGINALER CODE (if mode == 0: etc.) UNVERÄNDERT...
-
-        self.sync_runtime_bools_from_config(config)
-
-        enable_road_features = bool(getattr(config, "enable_advanced_road_features", True))
-        enable_road_labels = bool(getattr(config, "enable_road_labels", True))
-        enable_building_features = bool(getattr(config, "enable_advanced_building_features", True))
-        enable_building_smoothing = bool(getattr(config, "enable_building_edge_smoothing", True))
-        enable_building_shadow = bool(getattr(config, "enable_building_drop_shadow", True))
-
-        enable_landuse_labels = bool(getattr(config, "enable_landuse_labels", True))
-        enable_point_features = bool(getattr(config, "enable_advanced_point_features", True))
-
+        enable_road_features = bool(self._get_attr(config, "enable_advanced_road_features", default=True))
+        enable_road_labels = bool(self._get_attr(config, "enable_road_labels", default=True))
+        enable_building_features = bool(self._get_attr(config, "enable_advanced_building_features", default=True))
+        enable_building_smoothing = bool(self._get_attr(config, "enable_building_edge_smoothing", default=True))
+        enable_building_shadow = bool(self._get_attr(config, "enable_building_drop_shadow", default=True))
+        enable_landuse_labels = bool(self._get_attr(config, "enable_landuse_labels", default=True))
+        enable_point_features = bool(self._get_attr(config, "enable_advanced_point_features", default=True))
         enable_building_labels = self.enable_building_labels
 
         result = None
-        geom_type = self.get_layer_geometry_type_name(layer)
-
         # ==============================================================================
         # CASUS 0: REINES BASIS-STYLING (Modus 0)
         # ==============================================================================
@@ -1466,10 +1447,7 @@ class StyleEngine:
                     # ==============================================================================
                     road_base_aktiv = True
                     if config:
-                        if isinstance(config, dict):
-                            road_base_aktiv = config.get("enable_advanced_road_features", True)
-                        else:
-                            road_base_aktiv = getattr(config, "enable_advanced_road_features", True)
+                        road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
 
                     # Wenn es sich um den Straßen-Layer handelt und der Haken AUS ist:
                     if layer and "road" in layer.name().lower() and road_base_aktiv is False:
@@ -1477,9 +1455,6 @@ class StyleEngine:
                         success = False
                     else:
                         # Nur wenn der Haken AN ist, darf QGIS die Datei wirklich anfassen:
-                        road_base_aktiv = config.get("enable_advanced_road_features", True) if isinstance(config,
-                                                                                                          dict) else getattr(
-                            config, "enable_advanced_road_features", True)
                         success, detail = self.apply_qml_style(layer, qml_abs_path)
 
                     # ==============================================================================
@@ -1517,10 +1492,7 @@ class StyleEngine:
         # Wir lesen den Haken direkt aus der frischen Konfiguration aus
         road_base_aktiv = True
         if config:
-            if isinstance(config, dict):
-                road_base_aktiv = config.get("enable_advanced_road_features", True)
-            else:
-                road_base_aktiv = getattr(config, "enable_advanced_road_features", True)
+            road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
 
         if road_base_aktiv is False:
             # 1. Alle Texte sofort und rückstandslos löschen
@@ -1539,9 +1511,6 @@ class StyleEngine:
             layer.triggerRepaint()
             return True
 
-        # ==============================================================================
-        # Ab hier läuft dein originaler Code (fields = layer.fields()...) völlig unverändert weiter:
-        # ==============================================================================
         fields = layer.fields()
 
         style = QgsStyle.defaultStyle()
@@ -1563,10 +1532,7 @@ class StyleEngine:
         mapping = {}
         config_mappings = []
         if config:
-            if isinstance(config, dict):
-                config_mappings = config.get("custom_mappings", [])
-            else:
-                config_mappings = getattr(config, "custom_mappings", [])
+            config_mappings = self._get_attr(config, "custom_mappings", default=[])
 
         if isinstance(config_mappings, list):
             for entry in config_mappings:
@@ -1734,55 +1700,59 @@ class StyleEngine:
             if hasattr(layer, "setFeatureBlendMode"):
                 layer.setFeatureBlendMode(0)  # Normaler Modus, verhindert Transparenz-Fehler
 
-                # ===========================================================================
-                # BLOCK: LIVE-SCHALTUNG FÜR STRASSENTEXTE (Schützt Yans Renderer vor dem Löschen!)
-                # ===========================================================================
-            has_name = fields.indexOf("name") >= 0
+        # ==============================================================================
+        # Straßennamen-Beschriftung und Abschluss - GILT FÜR MODUS 1 UND MODUS 2
+        # REPARATUR: Dieser Abschnitt lag vorher komplett im "else"-Zweig (Modus 2) und
+        # wurde deshalb im reinen Einzelstyling (Modus 1) nie ausgeführt. Die Funktion
+        # endete in Modus 1 dadurch ohne "return True" (implizites None), wodurch der
+        # Aufrufer immer einen falschen Fallback-Status erhielt - der Straßennamen-Haken
+        # ("Show Road Names") hatte in Modus 1 zusätzlich keinerlei Wirkung, weil hier
+        # ohnehin immer StyleEngine.enable_labels statt des übergebenen enable_labels-
+        # Parameters gelesen wurde.
+        # ==============================================================================
+        has_name = fields.indexOf("name") >= 0
 
-            # Wir fragen live das globale Klassen-Flag ab
-            if getattr(StyleEngine, "enable_labels", True) is True and has_name:
-                label_settings = QgsPalLayerSettings()
-                label_settings.fieldName = "name"
-                label_settings.placement = QgsPalLayerSettings.Line
+        if bool(enable_labels) and has_name:
+            label_settings = QgsPalLayerSettings()
+            label_settings.fieldName = "name"
+            label_settings.placement = QgsPalLayerSettings.Line
 
-                # --- DIE COOLE DICHTE-OPTIMIERUNG VON PAGE 3 HIER INTEGRIEREN ---
-                label_settings.repeatDistance = 700
-                label_settings.repeatDistanceUnit = QgsUnitTypes.RenderMillimeters
-                label_settings.minimumFeatureSize = 20
-                label_settings.removeDuplicateLabels = True
+            # --- DIE COOLE DICHTE-OPTIMIERUNG VON PAGE 3 HIER INTEGRIEREN ---
+            label_settings.repeatDistance = 700
+            label_settings.repeatDistanceUnit = QgsUnitTypes.RenderMillimeters
+            label_settings.minimumFeatureSize = 20
+            label_settings.removeDuplicateLabels = True
 
-                text_format = QgsTextFormat()
-                text_format.setFont(QFont("Arial", 7))
-                text_format.setColor(QColor("#252525"))
+            text_format = QgsTextFormat()
+            text_format.setFont(QFont("Arial", 7))
+            text_format.setColor(QColor("#252525"))
 
-                buffer_settings = QgsTextBufferSettings()
-                buffer_settings.setEnabled(True)
-                buffer_settings.setSize(0.8)
-                buffer_settings.setColor(QColor("#ffffff"))
-                text_format.setBuffer(buffer_settings)
+            buffer_settings = QgsTextBufferSettings()
+            buffer_settings.setEnabled(True)
+            buffer_settings.setSize(0.8)
+            buffer_settings.setColor(QColor("#ffffff"))
+            text_format.setBuffer(buffer_settings)
 
-                label_settings.setFormat(text_format)
-                layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
-                layer.setLabelsEnabled(True)
-            else:
-                # DIE RETTUNG: Wenn der Haken aus ist, löschen wir NUR die Texte!
-                layer.setLabelsEnabled(False)
-                layer.setLabeling(None)
+            label_settings.setFormat(text_format)
+            layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
+            layer.setLabelsEnabled(True)
+        else:
+            # DIE RETTUNG: Wenn der Haken aus ist, löschen wir NUR die Texte!
+            layer.setLabelsEnabled(False)
+            layer.setLabeling(None)
 
-            # Ab hier ist alles wieder exakt auf der Standard-Methoden-Ebene (8 Leerzeichen)
-            try:
-                iface = qgis.utils.iface
-                if iface and iface.layerTreeView():
-                    iface.layerTreeView().refreshLayerSymbology(layer.id())
-            except Exception:
-                pass
+        try:
+            iface = qgis.utils.iface
+            if iface and iface.layerTreeView():
+                iface.layerTreeView().refreshLayerSymbology(layer.id())
+        except Exception:
+            pass
 
-            if hasattr(layer, "emitStyleChanged"):
-                layer.emitStyleChanged()
+        if hasattr(layer, "emitStyleChanged"):
+            layer.emitStyleChanged()
 
-            layer.triggerRepaint()
-            return True
-
+        layer.triggerRepaint()
+        return True
 
     def apply_building_symbol_mapping(self, layer, config=None, enable_smoothing=True, enable_shadow=True,
                                       reines_einzelstyling=False, enable_labels=True, ignore_user_styles=False):
@@ -1903,10 +1873,7 @@ class StyleEngine:
         field_mapping = {}
         config_mappings = []
         if config:
-            if isinstance(config, dict):
-                config_mappings = config.get("custom_mappings", [])
-            else:
-                config_mappings = getattr(config, "custom_mappings", [])
+            config_mappings = self._get_attr(config, "custom_mappings", default=[])
 
         if isinstance(config_mappings, list):
             for entry in config_mappings:
@@ -2162,10 +2129,7 @@ class StyleEngine:
         field_mapping = {}
         config_mappings = []
         if config:
-            if isinstance(config, dict):
-                config_mappings = config.get("custom_mappings", [])
-            else:
-                config_mappings = getattr(config, "custom_mappings", [])
+            config_mappings = self._get_attr(config, "custom_mappings", default=[])
 
         if isinstance(config_mappings, list):
             for entry in config_mappings:
@@ -2430,8 +2394,10 @@ class StyleEngine:
         layer.setLabelsEnabled(False)
         layer.setLabeling(None)
 
-        # 2. Beschriftung auswerten und anwenden basierend auf der statischen Klassenvariable
-        live_flag = StyleEngine.enable_landuse_labels
+        # 2. Beschriftung auswerten anhand des übergebenen Parameters
+        #    (REPARATUR: vorher wurde hier immer StyleEngine.enable_landuse_labels
+        #    gelesen und der übergebene enable_labels-Parameter komplett ignoriert)
+        live_flag = bool(enable_labels)
 
         if live_flag is True:
             # Intelligente Feldauswahl: 'name' bevorzugen, sonst 'fclass' als Typ-Anzeige nutzen
