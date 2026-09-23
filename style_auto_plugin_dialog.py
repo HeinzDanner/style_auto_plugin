@@ -78,23 +78,31 @@ class StyleAutoPluginDialog(QDialog):
         effects_layout.addWidget(self.cb_road_labels)
 
         # ==============================================================================
-        # Schalter 3: Gebäudebeschriftung
-        # REPARATUR/UMBENENNUNG: Dieser Haken (Datenfeld: enable_building_drop_shadow)
-        # steuert in style_engine.py aufgrund einer ODER-Verknüpfung faktisch die
-        # Sichtbarkeit der Gebäudebeschriftung mit ("... or StyleEngine.enable_building_shadow
-        # is True" in apply_building_symbol_mapping). Anstatt die zugrunde liegende
-        # Datenstruktur/Logik zu verändern (Risiko für neue Bugs), wird der Haken hier nur
-        # umbenannt, damit sein Name zu seiner tatsächlichen Wirkung passt. Der alte,
-        # eigentlich dafür vorgesehene "Show Building Labels"-Haken (cb_building_labels)
-        # wird weiter unten unsichtbar gemacht und dauerhaft auf True gezwungen.
+        # Schalter 3: Gebäudekanten-Glättung
         # ==============================================================================
-        self.cb_building_shadow = QCheckBox(self.tr("Show Building Labels (House Numbers/Names)"), self)
+        self.cb_building_smoothing = QCheckBox(self.tr("Enable Building Edge Smoothing"), self)
+        self.cb_building_smoothing.setChecked(self.config.get("enable_building_edge_smoothing", True))
+        self.cb_building_smoothing.stateChanged.connect(self.auto_save_settings)
+        effects_layout.addWidget(self.cb_building_smoothing)
+
+        # ==============================================================================
+        # Schalter 4: 2.5D Gebäude-Schlagschatten
+        # ==============================================================================
+        self.cb_building_shadow = QCheckBox(self.tr("Enable 2.5D Building Drop Shadows"), self)
         self.cb_building_shadow.setChecked(self.config.get("enable_building_drop_shadow", True))
         self.cb_building_shadow.stateChanged.connect(self.auto_save_settings)
         effects_layout.addWidget(self.cb_building_shadow)
 
         # ==============================================================================
-        # Schalter 4: Flächenbeschriftung (Wald/Wasser)
+        # Schalter 5: Gebäudebeschriftung (Hausnummern)
+        # ==============================================================================
+        self.cb_building_labels = QCheckBox(self.tr("Show Building Labels (House Numbers/Names)"), self)
+        self.cb_building_labels.setChecked(self.config.get("enable_building_labels", True))
+        self.cb_building_labels.stateChanged.connect(self.auto_save_settings)
+        effects_layout.addWidget(self.cb_building_labels)
+
+        # ==============================================================================
+        # Schalter 6: Flächenbeschriftung (Wald/Wasser)
         # ==============================================================================
         self.cb_landuse_labels = QCheckBox(self.tr("Show Landuse Labels (Forest/Water Spaced)"), self)
         self.cb_landuse_labels.setChecked(self.config.get("enable_landuse_labels", True))
@@ -116,21 +124,7 @@ class StyleAutoPluginDialog(QDialog):
         self.cb_point_base = QCheckBox(self)
         self.cb_point_base.setChecked(True)
         self.cb_point_base.hide()
-
-        # Gebäudekanten-Glättung: unsichtbar gemacht, dauerhaft auf True gezwungen.
-        # (Datenfeld enable_building_edge_smoothing bleibt unverändert bestehen.)
-        self.cb_building_smoothing = QCheckBox(self)
-        self.cb_building_smoothing.setChecked(True)
-        self.cb_building_smoothing.hide()
-
-        # Alter Gebäudebeschriftungs-Haken: unsichtbar gemacht, dauerhaft auf True gezwungen,
-        # da diese Funktion jetzt über den umbenannten cb_building_shadow gesteuert wird.
-        # (Datenfeld enable_building_labels bleibt unverändert bestehen.)
-        self.cb_building_labels = QCheckBox(self)
-        self.cb_building_labels.setChecked(True)
-        self.cb_building_labels.hide()
         # ==============================================================================
-
 
         # --- GRUPPE 3: MODULARES EINZELSTYLING (SPALTENFREI) ---
         self.group_single = QGroupBox(self.tr("Custom Single Symbol Mappings"), self)
