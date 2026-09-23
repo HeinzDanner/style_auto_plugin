@@ -145,9 +145,14 @@ def test_mode1_line_layer_enables_symbol_levels_and_round_caps(engine, symbols_l
     assert found_round_join is True
 
 
-def test_mode1_line_layer_master_switch_off_forces_grey_fallback(engine, symbols_loaded):
-    from qgis.core import QgsSingleSymbolRenderer
-
+def test_mode1_line_layer_hierarchy_toggle_off_keeps_custom_mapping_but_disables_symbol_levels(engine, symbols_loaded):
+    # REPARATUR: Der Haken "Straßen-Hierarchie & dicke Liniendesigns aktivieren"
+    # (enable_advanced_road_features) ist laut GUI-Beschriftung NUR für die
+    # Hierarchie-Extras (Symbolebenen-Verschmelzung + runde Kappen/Verbindungen)
+    # zuständig - nicht dafür, das gesamte Straßenstyling (Custom-Mappings mit
+    # Farben/Symbolen pro Straßentyp) abzuschalten. Vorher wurde bei deaktiviertem
+    # Haken das Custom-Mapping komplett übersprungen und stattdessen eine einfache
+    # graue Linie erzwungen ("Straßen im Standard-Look belassen (Basis aus)").
     layer = make_line_layer()
     add_feature(layer, ["motorway", "Autobahn 1"])
     config = _simple_config(road_style_mode=1, enable_advanced_road_features=False)
@@ -155,8 +160,11 @@ def test_mode1_line_layer_master_switch_off_forces_grey_fallback(engine, symbols
     result = engine.apply_best_style(layer, config)
 
     assert result["success"] is True
-    assert isinstance(layer.renderer(), QgsSingleSymbolRenderer)
-    assert layer.labelsEnabled() is False
+    renderer = layer.renderer()
+    # Custom-Mapping bleibt aktiv: Renderer ist weiterhin kategorisiert, nicht grau/flach.
+    assert renderer.type() == "categorizedSymbol"
+    # Aber die Hierarchie-Extras sind aus:
+    assert renderer.usingSymbolLevels() is False
 
 
 # ----------------------------------------------------------------------

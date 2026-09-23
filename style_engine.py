@@ -925,17 +925,6 @@ class StyleEngine:
             except Exception:
                 pass
 
-        # ==============================================================================
-        # --- 2. SCHRITT: DIE SAUBERE GUI-REISSLEINE (Falls der Haken AUS ist) ---
-        # ==============================================================================
-        if qml_path and "roads_fclass.qml" in str(qml_path):
-            # Wir prüfen direkt den echten Grafik-Haken aus dem globalen Klassen-RAM
-            road_base_aktiv = getattr(StyleEngine, "enable_advanced_road_features", True)
-
-            # Wenn der Schalter im Dialog AUS ist:
-            if road_base_aktiv is False:
-                # Text-Ausgabe restlos entfernt, die Hänger-Blockade bleibt unzerstörbar!
-                return False, "Laden vom Master-Schalter blockiert."
         result = layer.loadNamedStyle(qml_path)
         success = False
         detail = ""
@@ -1083,33 +1072,8 @@ class StyleEngine:
             return self._result(False, "Kein Layer übergeben.", level="warning")
 
         # ==============================================================================
-        # --- DIE MASTER-REISSLEINE: Abfang-Logik für den Straßen-Basis-Haken ---
         # ==============================================================================
         geom_type = self.get_layer_geometry_type_name(layer)
-
-        # Wenn der aktuelle Layer eine Linie (Straße) ist:
-        if geom_type == "line":
-            road_base_aktiv = True
-            if config:
-                road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
-
-            # WENN DER HAKEN "Basis-Straßenstyling aktivieren" AUS IST:
-            if road_base_aktiv is False:
-                # 1. Alle Texte und Straßennamen sofort komplett löschen
-                layer.setLabelsEnabled(False)
-                layer.setLabeling(None)
-
-                # 2. Die kaputte QML umgehen und die Straßen per Code auf eine feine graue Linie setzen
-                from qgis.core import QgsSingleSymbolRenderer, QgsLineSymbol
-                standard_symbol = QgsLineSymbol.createSimple({
-                    'color': '#aaaaaa',
-                    'width': '0.26',
-                    'penstyle': 'solid'
-                })
-                layer.setRenderer(QgsSingleSymbolRenderer(standard_symbol))
-
-                layer.triggerRepaint()
-                return self._result(True, "Straßen im Standard-Look belassen (Basis aus).", level="info")
 
         # ==============================================================================
         # Modus und kartografische Bools EINMALIG bestimmen (vorher hier doppelt berechnet)
@@ -1162,17 +1126,17 @@ class StyleEngine:
         elif mode == 1:
             # INTERNE WEICHE NACH GEOMETRIE-TYP
             if geom_type == "line":
-                if enable_road_features:
-                    success = self.apply_road_symbol_mapping(
-                        layer, config=config, reines_einzelstyling=True, enable_labels=enable_road_labels
-                    )
-                    if success:
-                        result = {"success": True, "message": "Reines Straßen-Einzelstyling angewendet (Modus 1)."}
-                else:
-                    result = {"success": False, "message": "Erweiterte Straßenbehandlung deaktiviert."}
-
-
-
+                # REPARATUR: enable_road_features ("Straßen-Hierarchie & dicke Liniendesigns")
+                # steuert NUR NOCH die Hierarchie-Extras (Symbolebenen-Verschmelzung + runde
+                # Kappen/Verbindungen) innerhalb von apply_road_symbol_mapping selbst. Die
+                # Custom-Mappings (Farben/Symbole pro Straßentyp) müssen unabhängig davon
+                # IMMER angewendet werden - vorher wurde bei deaktiviertem Haken das komplette
+                # Straßenstyling übersprungen und stattdessen eine einfache graue Linie erzwungen.
+                success = self.apply_road_symbol_mapping(
+                    layer, config=config, reines_einzelstyling=True, enable_labels=enable_road_labels
+                )
+                if success:
+                    result = {"success": True, "message": "Reines Straßen-Einzelstyling angewendet (Modus 1)."}
 
             elif geom_type == "polygon":
 
@@ -1281,7 +1245,11 @@ class StyleEngine:
 
             # 2. Danach die erweiterten Einzelstylings injizieren
 
-            if geom_type == "line" and enable_road_features:
+            # REPARATUR: enable_road_features darf hier nicht mehr das Aufrufen der
+            # Custom-Mappings verhindern - es steuert innerhalb von apply_road_symbol_mapping
+            # ausschließlich noch die Hierarchie-Extras (Symbolebenen + runde Kappen/Verbindungen).
+
+            if geom_type == "line":
 
                 self.apply_road_symbol_mapping(
 
@@ -1487,29 +1455,19 @@ class StyleEngine:
             return False
 
         # ==============================================================================
-        # --- UNZINGBARER STRASSEN-MASTER-STOPP (Nutzt direkt die übergebene Config) ---
+        # --- STRASSEN-HIERARCHIE-HAKEN (Nutzt direkt die übergebene Config) ---
         # ==============================================================================
-        # Wir lesen den Haken direkt aus der frischen Konfiguration aus
+        # REPARATUR: road_base_aktiv steuerte hier vorher einen kompletten "Master-Stopp",
+        # der bei deaktiviertem Haken JEDES Straßenstyling (inkl. Custom-Mappings) durch
+        # eine einfache graue Linie ersetzte. Der Haken heißt in der GUI aber "Straßen-
+        # Hierarchie & dicke Liniendesigns aktivieren" und soll laut Beschriftung nur die
+        # Hierarchie-Extras steuern (Symbolebenen-Verschmelzung + runde Kappen/Verbindungen),
+        # nicht das Straßenstyling insgesamt. road_base_aktiv wird daher weiter unten nur
+        # noch als Ein/Aus-Schalter für _optimize_line_caps_and_joins() und
+        # setUsingSymbolLevels() verwendet.
         road_base_aktiv = True
         if config:
             road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
-
-        if road_base_aktiv is False:
-            # 1. Alle Texte sofort und rückstandslos löschen
-            layer.setLabelsEnabled(False)
-            layer.setLabeling(None)
-
-            # 2. Die defekte QML-Datei komplett umgehen und ein einfaches Standardsymbol setzen
-            from qgis.core import QgsSingleSymbolRenderer, QgsLineSymbol
-            standard_symbol = QgsLineSymbol.createSimple({
-                'color': '#aaaaaa',
-                'width': '0.26',
-                'penstyle': 'solid'
-            })
-            layer.setRenderer(QgsSingleSymbolRenderer(standard_symbol))
-
-            layer.triggerRepaint()
-            return True
 
         fields = layer.fields()
 
@@ -1607,7 +1565,8 @@ class StyleEngine:
 
                 if fetched_symbol:
                     cloned_symbol = fetched_symbol.clone()
-                    _optimize_line_caps_and_joins(cloned_symbol)
+                    if road_base_aktiv:
+                        _optimize_line_caps_and_joins(cloned_symbol)
 
                     # Der Category-Key muss zur aktiven Spalte passen
                     category_key = key
@@ -1636,7 +1595,8 @@ class StyleEngine:
             fallback_symbol = QgsLineSymbol()
 
             fallback_symbol.changeSymbolLayer(0, fallback_layer)
-            _optimize_line_caps_and_joins(fallback_symbol)
+            if road_base_aktiv:
+                _optimize_line_caps_and_joins(fallback_symbol)
 
             # Ein leerer String '' als Key fängt alle nicht definierten Straßen ab!
             fallback_cat = QgsRendererCategory("", fallback_symbol, "Andere Straßen/Wege")
