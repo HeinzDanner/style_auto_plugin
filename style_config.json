@@ -2,7 +2,7 @@
     "usefallbackstyleforunknownvalues": true,
     "allownamemismatchfallback": true,
     "compactlegend": false,
-    "enable_advanced_road_features": true,
+    "enable_advanced_road_features": false,
     "enable_advanced_building_features": true,
     "enable_building_edge_smoothing": true,
     "enable_building_drop_shadow": true,
@@ -1358,7 +1358,7 @@
             ]
         }
     ],
-    "enable_road_labels": true,
+    "enable_road_labels": false,
     "custom_mappings": [
         {
             "active": true,
@@ -1410,5 +1410,5 @@
             "label": "Krankenhaus"
         }
     ],
-    "road_style_mode": 0
+    "road_style_mode": 2
 }
