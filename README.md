@@ -14,6 +14,42 @@ This was my first Python project and my first hands-on work with a GIS API (QGIS
 
 Several rounds of real-world testing surfaced concrete bugs (checkboxes silently not wired to the logic they were supposed to control, wrong QGIS API method names, config values read in one place but never in another). Each one was fixed with a regression test added alongside it — the `tests/` suite grew out of that process rather than being planned upfront.
 
+## How It Works
+
+The plugin is essentially a small rule engine, not a fixed set of hardcoded styles:
+
+```text
+Active layer
+   │
+   ▼
+score_match()          -> scores every configured layer/profile ruleset against the
+                           layer's geometry type, name, and field names/values
+   │
+   ▼
+find_layer_ruleset() /
+find_style_profile()  -> picks the highest-priority ruleset whose match score clears
+                           its configured minimum threshold
+   │
+   ▼
+get_matching_field_ruleset() -> within that ruleset, picks the best-matching field
+                                 (by name hints, priority, and detected values)
+   │
+   ▼
+apply_categorized_renderer_with_fallback()
+   │                   -> builds a QGIS categorized renderer: one QGIS symbol per
+   │                      configured value, with an optional fallback style for any
+   │                      value that has no explicit rule
+   ▼
+Styled layer + (Mode 1/2 only) optional road/building/land-use/label refinements
+```
+
+Everything above the QGIS-symbol level is driven entirely by `style_rules.json` /
+`style_config.json` — adding a new layer type or value mapping is a config change,
+not a code change. The interesting/non-trivial part is the scoring and priority
+logic in `score_match()`, `find_layer_ruleset()`, and `find_style_profile()`
+(`style_engine.py`), which lets the plugin guess the right ruleset for a layer
+even when layer and field names don't match exactly.
+
 ## Features
 
 - Automatic selection of the most suitable layer ruleset.
