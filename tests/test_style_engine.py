@@ -114,6 +114,37 @@ def test_mode1_line_layer_respects_road_labels_toggle(engine, symbols_loaded):
     assert layer_labels_off.labelsEnabled() is False
 
 
+# Regressionstest für den Bugfix in apply_road_symbol_mapping:
+# Der Block "Symbol-Ebenen aktivieren" (setUsingSymbolLevels) sowie das Erzwingen
+# von rundem Kappen-/Verbindungsstil lag vorher komplett im "else"-Zweig (Modus 2)
+# und wurde im reinen Einzelstyling (Modus 1) nie ausgeführt. Dadurch überlagerten
+# sich unterschiedlich dicke Straßenkategorien (z.B. Autobahn über Nebenstraße)
+# nicht sauber, weil Symbol-Ebenen in Modus 1 immer deaktiviert blieben.
+def test_mode1_line_layer_enables_symbol_levels_and_round_caps(engine, symbols_loaded):
+    from qgis.PyQt.QtCore import Qt
+
+    layer = make_line_layer()
+    add_feature(layer, ["motorway", "Autobahn 1"])
+    config = _simple_config(road_style_mode=1, enable_advanced_road_features=True)
+
+    result = engine.apply_best_style(layer, config)
+
+    assert result["success"] is True
+    renderer = layer.renderer()
+    assert renderer.usingSymbolLevels() is True
+
+    # Mindestens eine Kategorie muss einen rund gekappten/verbundenen Symbol-Layer haben
+    found_round_join = False
+    for category in renderer.categories():
+        symbol = category.symbol()
+        for i in range(symbol.symbolLayerCount()):
+            sl = symbol.symbolLayer(i)
+            if hasattr(sl, "penJoinStyle"):
+                if sl.penJoinStyle() == Qt.RoundJoin:
+                    found_round_join = True
+    assert found_round_join is True
+
+
 def test_mode1_line_layer_master_switch_off_forces_grey_fallback(engine, symbols_loaded):
     from qgis.core import QgsSingleSymbolRenderer
 

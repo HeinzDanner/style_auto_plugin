@@ -1564,14 +1564,19 @@ class StyleEngine:
                                 "legend_label": entry.get("label", "")
                             }
         # Hilfsfunktion für abgerundete Kurven und Kappen
+        # REPARATUR: QgsSimpleLineSymbolLayer (und Verwandte) heißen in der QGIS-API
+        # setPenJoinStyle()/setPenCapStyle() - nicht setJoinStyle()/setCapStyle(). Der
+        # alte hasattr()-Check war deshalb IMMER False, wodurch runde Kappen/Verbindungen
+        # weder in Modus 1 noch in Modus 2 jemals tatsächlich gesetzt wurden.
         def _optimize_line_caps_and_joins(symbol):
             if not symbol:
                 return
             for i in range(symbol.symbolLayerCount()):
                 layer_item = symbol.symbolLayer(i)
-                if hasattr(layer_item, "setJoinStyle"):
-                    layer_item.setJoinStyle(Qt.RoundJoin)
-                    layer_item.setCapStyle(Qt.RoundCap)
+                if hasattr(layer_item, "setPenJoinStyle"):
+                    layer_item.setPenJoinStyle(Qt.RoundJoin)
+                if hasattr(layer_item, "setPenCapStyle"):
+                    layer_item.setPenCapStyle(Qt.RoundCap)
 
 
         # --- STRATEGIE FÜR REINES EINZELSTYLING (Modus 1) ---
@@ -1644,7 +1649,10 @@ class StyleEngine:
 
         # --- STRATEGIE FÜR HISTORISCHE STILE (Modus 2) ---
         else:
-            enable_road_features = StyleEngine.enable_advanced_road_features
+            # REPARATUR: Vorher wurde hier die Klassenvariable StyleEngine.enable_advanced_road_features
+            # gelesen statt der bereits oben aus der uebergebenen Config ermittelten road_base_aktiv.
+            # Beide konnten auseinanderlaufen (z.B. bei dict-Configs oder in Tests).
+            enable_road_features = road_base_aktiv
             if renderer.type() == "categorizedSymbol":
                 updated_categories = []
 
@@ -1688,17 +1696,24 @@ class StyleEngine:
                 for cat in updated_categories:
                     renderer.addCategory(cat)
 
-            # --- ERZWINGE DIE STRASSEN-VERSCHMELZUNG (SYMBOL LEVELS) ---
-            active_renderer = layer.renderer()
-            if active_renderer:
-                # 1. Symbol-Ebenen einschalten, damit Schichten sich nicht gegenseitig schneiden
-                if enable_road_features:
-                    active_renderer.setUsingSymbolLevels(True)
+        # ==============================================================================
+        # --- ERZWINGE DIE STRASSEN-VERSCHMELZUNG (SYMBOL LEVELS) - GILT FUER MODUS 1 UND 2 ---
+        # REPARATUR: Dieser Block lag vorher komplett im "else"-Zweig (Modus 2) und wurde
+        # daher im reinen Einzelstyling (Modus 1) nie ausgefuehrt. Dadurch blieben
+        # Symbol-Ebenen (setUsingSymbolLevels) in Modus 1 immer aus, wodurch sich dicker
+        # gezeichnete Strassen (z.B. Autobahnen) nicht sauber ueber duennere Strassen
+        # legten, und Kappen-/Verbindungsstil wirkten inkonsistent zu Modus 2.
+        # ==============================================================================
+        active_renderer = layer.renderer()
+        if active_renderer:
+            # 1. Symbol-Ebenen einschalten, damit Schichten sich nicht gegenseitig schneiden
+            if road_base_aktiv:
+                active_renderer.setUsingSymbolLevels(True)
 
-            # Optional: Falls Ihre Autobahnen immer ganz oben liegen sollen,
-            # sorgt dieser QGIS-Befehl dafür, dass sie Brücken sauber überqueren
-            if hasattr(layer, "setFeatureBlendMode"):
-                layer.setFeatureBlendMode(0)  # Normaler Modus, verhindert Transparenz-Fehler
+        # Optional: Falls Ihre Autobahnen immer ganz oben liegen sollen,
+        # sorgt dieser QGIS-Befehl dafür, dass sie Brücken sauber überqueren
+        if hasattr(layer, "setFeatureBlendMode"):
+            layer.setFeatureBlendMode(0)  # Normaler Modus, verhindert Transparenz-Fehler
 
         # ==============================================================================
         # Straßennamen-Beschriftung und Abschluss - GILT FÜR MODUS 1 UND MODUS 2
