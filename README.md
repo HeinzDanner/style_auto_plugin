@@ -8,6 +8,9 @@ Style Auto Plugin is a QGIS Python plugin that automatically applies categorized
 
 Styling rules are loaded efficiently from the configuration. Rulesets are selected by layer name, geometry type, field name, and priority. For values that are not explicitly configured, an optional fallback style can be applied.
 
+<!-- TODO: add screenshot - before/after map view, Mode 2, showing road hierarchy + building styling applied -->
+<!-- ![Before and after styling](docs/screenshots/before_after.png) -->
+
 ## Project Context
 
 This was my first Python project and my first hands-on work with a GIS API (QGIS/PyQt). My background is Java/JVM, so the goal here was to get comfortable with a new language and ecosystem while still applying the engineering habits I use professionally: writing tests against real objects instead of trusting manual clicking, tracking down root causes instead of patching symptoms, and keeping a clean, reviewable commit history.
@@ -136,6 +139,17 @@ Run on Windows, for example, with:
 4. Choose the desired global styling mode.
 5. Enable any cartographic options you want to use (shadow, smoothing, and so on).
 6. Close the window—the style is applied silently and immediately to the configured field.
+
+<!-- TODO: add screenshot - settings dialog with mode selector and cartographic checkboxes -->
+<!-- ![Settings dialog](docs/screenshots/settings_dialog.png) -->
+
+## Screenshots
+
+<!-- TODO: add screenshot - zoomed-in road hierarchy detail (thick main roads vs. thin side roads) -->
+<!-- ![Road hierarchy detail](docs/screenshots/road_hierarchy.png) -->
+
+<!-- TODO (optional): add screenshot - buildings with 2.5D shadow styling -->
+<!-- ![Building shadow styling](docs/screenshots/building_shadow.png) -->
 
 ## Behavior for Missing Values
 
