@@ -148,9 +148,6 @@ Run on Windows, for example, with:
 <!-- TODO: add screenshot - zoomed-in road hierarchy detail (thick main roads vs. thin side roads) -->
 <!-- ![Road hierarchy detail](docs/screenshots/road_hierarchy.png) -->
 
-<!-- TODO (optional): add screenshot - buildings with 2.5D shadow styling -->
-<!-- ![Building shadow styling](docs/screenshots/building_shadow.png) -->
-
 ## Behavior for Missing Values
 
 If the layer contains values for which no explicit rule exists, two cases are possible:
