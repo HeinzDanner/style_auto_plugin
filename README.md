@@ -57,7 +57,7 @@ even when layer and field names don't match exactly.
 - Automatic selection of the most suitable layer ruleset.
 - Priority-based selection of the appropriate field ruleset.
 - Three global styling modes (Mode 0, 1, and 2).
-- Six optional cartographic settings exposed through the GUI.
+- Several optional cartographic settings exposed through the GUI.
 - Field-based categorized symbology.
 - Duplicate-safe automatic symbol import for testing.
 - Fast in-memory caching to avoid repeated disk scans.
