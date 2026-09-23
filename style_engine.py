@@ -1358,7 +1358,11 @@ class StyleEngine:
 
                     # Eindeutig ein Flächen/Landuse-Layer anhand der Tabellenwerte!
 
-                    self.apply_landuse_advanced_features(layer, enable_labels=StyleEngine.enable_landuse_labels)
+                    # REPARATUR: vorher stand hier "StyleEngine.enable_landuse_labels" (stale
+                    # Klassenattribut, nur bei offenem Dialog aktualisiert) statt der bereits
+                    # oben korrekt aus der Config abgeleiteten lokalen Variable - exakt dasselbe
+                    # Bug-Muster wie bei den Gebäude-Bools.
+                    self.apply_landuse_advanced_features(layer, enable_labels=enable_landuse_labels)
 
                     result = {"success": True, "message": "Kombiniertes Landuse-Flächenstyling erfolgreich (Modus 2)."}
 

@@ -271,6 +271,27 @@ def test_mode1_polygon_landuse_layer_respects_label_toggle(engine, symbols_loade
 
 
 # ----------------------------------------------------------------------
+# apply_best_style: Modus 2 - Landuse-Beschriftung folgt dem Config-Haken
+# (Regressionstest für dasselbe Bug-Muster wie bei den Gebäude-Bools):
+# vorher wurde hier "StyleEngine.enable_landuse_labels" (stale Klassen-
+# attribut) statt der lokal aus der Config abgeleiteten Variable gelesen.
+# ----------------------------------------------------------------------
+
+def test_mode2_polygon_landuse_layer_respects_label_toggle(engine, symbols_loaded):
+    layer_on = make_polygon_layer()
+    add_feature(layer_on, [None, None, "forest", "forest", "Wald 1"])
+    config_on = _simple_config(road_style_mode=2, enable_landuse_labels=True)
+    engine.apply_best_style(layer_on, config_on)
+    assert layer_on.labeling() is not None
+
+    layer_off = make_polygon_layer()
+    add_feature(layer_off, [None, None, "forest", "forest", "Wald 2"])
+    config_off = _simple_config(road_style_mode=2, enable_landuse_labels=False)
+    engine.apply_best_style(layer_off, config_off)
+    assert layer_off.labeling() is None
+
+
+# ----------------------------------------------------------------------
 # apply_best_style: Modus 1 - Punkte (POIs)
 # ----------------------------------------------------------------------
 
