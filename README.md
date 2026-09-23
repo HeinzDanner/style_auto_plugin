@@ -134,12 +134,23 @@ Run on Windows, for example, with:
 
 1. Load a suitable vector layer in QGIS.
 2. Select the desired layer in the legend.
-3. Start the plugin from the user interface.
-4. Choose the desired global styling mode.
-5. Enable any cartographic options you want to use (shadow, smoothing, and so on).
-6. Close the window—the style is applied silently and immediately to the configured field.
+3. Two toolbar buttons are added to QGIS: **S** (Style) and **C** (Configure).
+4. Click **C** to open the settings dialog: choose the global styling mode, enable any cartographic options you want (shadow, smoothing, and so on), and optionally add custom single-value style mappings (see table below). Closing this dialog only saves your settings — it does **not** style the layer.
+5. Click **S** on the selected layer to actually apply the styling using the current configuration.
 
 ![Settings dialog](docs/screenshots/settings_dialog.png)
+
+### Custom Single-Value Style Mappings
+
+The table at the bottom of the settings dialog (used in Mode 1 and Mode 2) lets you map one specific attribute value to one specific style, independent of the JSON ruleset. Example: a line feature with the OSM value `motorway` should be rendered as a highway, using the internal style `autobahn` and the human-readable legend text "Autobahn".
+
+| Column | Meaning | Example |
+|---|---|---|
+| Active | Whether this row's rule is used at all | enabled |
+| Geometry | Expected geometry type of the feature | `Line` |
+| OSM Value / Code | The raw technical value found in the data | `motorway` |
+| Style Name / SVG | Internal style name, or an SVG file for point symbols | `autobahn` |
+| Legend Text | Human-readable label shown in the QGIS legend | `Autobahn` |
 
 ## Screenshots
 
