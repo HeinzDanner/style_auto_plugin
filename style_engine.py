@@ -1106,7 +1106,7 @@ class StyleEngine:
 
             # 2. Spezifische Korrekturen/Bremsen für Modus 0
             if geom_type == "line":
-                result = {"success": True, "message": "Straßen im Basis-Look belassen (Modus 0)."}
+                result = {"success": True, "message": "Basis-Straßen-Styling angewendet (Modus 0)."}
 
             elif geom_type == "polygon" and enable_building_features:
                 if layer.fields().indexOf("building") >= 0 or layer.fields().indexOf(
@@ -1115,10 +1115,10 @@ class StyleEngine:
                         layer, enable_smoothing=True, enable_shadow=False,
                         reines_einzelstyling=False, enable_labels=False, ignore_user_styles=True
                     )
-                    result = {"success": True, "message": "Basis-Polygon-Styling repariert."}
+                    result = {"success": True, "message": "Basis-Gebäude-Styling angewendet (Modus 0)."}
 
             elif geom_type == "point":
-                result = {"success": True, "message": "Punkt-Layer unverändert belassen (Modus 0)."}
+                result = {"success": True, "message": "Basis-Punkt-Styling angewendet (Modus 0)."}
 
         # ==============================================================================
         # CASUS 1: REINES EINZELSTYLING (Modus 1 - Basis-Styling wird komplett ignoriert)
