@@ -1,8 +1,8 @@
 # Style Auto Plugin - Test Configuration
 #
-# Diese Tests benötigen eine echte QGIS-Python-Umgebung (qgis.core), da sie
-# reale QgsVectorLayer-Instanzen anlegen und Renderer/Labeling prüfen.
-# Ausführen mit dem QGIS-eigenen Python-Interpreter, z.B. unter Windows:
+# These tests require a real QGIS Python environment (qgis.core), because they
+# create real QgsVectorLayer instances and verify renderers and labeling.
+# Run them with the QGIS-provided Python interpreter, for example on Windows:
 #
 #   "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
 #
@@ -18,7 +18,7 @@ if PLUGIN_DIR not in sys.path:
 
 @pytest.fixture(scope="session")
 def qgis_app():
-    """Startet eine minimale, headless QGIS-Anwendung für die gesamte Testsession."""
+    """Start a minimal headless QGIS application for the full test session."""
     from qgis.core import QgsApplication
 
     app = QgsApplication([], False)
@@ -29,8 +29,8 @@ def qgis_app():
 
 @pytest.fixture(scope="session")
 def symbols_loaded(qgis_app):
-    """Importiert die mitgelieferten Standard-Symbole (autobahn, wohngebaeude, ...)
-    einmalig in den QgsStyle.defaultStyle(), damit Styling-Tests echte Symbole finden."""
+    """Import the bundled default symbols (autobahn, wohngebaeude, ...)
+    into QgsStyle.defaultStyle() once so styling tests can resolve real symbols."""
     from qgis.core import QgsStyle
 
     xml_path = os.path.join(PLUGIN_DIR, "styles", "style_symbols.xml")
@@ -42,7 +42,7 @@ def symbols_loaded(qgis_app):
 
 @pytest.fixture
 def engine(qgis_app):
-    """Frische StyleEngine-Instanz pro Test (verhindert Seiteneffekte über Klassenattribute)."""
+    """Fresh StyleEngine instance per test to prevent class-attribute side effects."""
     from style_engine import StyleEngine
 
     return StyleEngine()

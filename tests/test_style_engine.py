@@ -1,7 +1,7 @@
-# Style Auto Plugin - Funktionale Tests für style_engine.py
+# Style Auto Plugin - Functional tests for style_engine.py
 #
-# Diese Tests benötigen eine echte QGIS-Python-Umgebung (qgis.core), da sie
-# reale QgsVectorLayer-Instanzen anlegen und Renderer/Labeling prüfen.
+# These tests require a real QGIS Python environment (qgis.core), because they
+# create real QgsVectorLayer instances and verify renderers and labeling.
 #
 #   "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
 import types
@@ -10,7 +10,7 @@ from tests.conftest import add_feature, make_line_layer, make_point_layer, make_
 
 
 def _simple_config(**overrides):
-    """Einfaches, dict-basiertes Config-Objekt wie es apply_best_style() akzeptiert."""
+    """Simple dict-based config object in the format accepted by apply_best_style()."""
     base = {
         "road_style_mode": 1,
         "enable_advanced_road_features": True,
@@ -74,12 +74,12 @@ def test_sync_runtime_bools_from_config_string_value_coerced(engine):
 
 def test_sync_runtime_bools_from_config_missing_key_keeps_previous_state(engine):
     engine.enable_building_labels = True
-    engine.sync_runtime_bools_from_config({})  # Kein enable_building_labels-Key enthalten
-    assert engine.enable_building_labels is True  # Bestehender Zustand bleibt erhalten
+    engine.sync_runtime_bools_from_config({})  # No enable_building_labels key present
+    assert engine.enable_building_labels is True  # Existing state remains unchanged
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: Modus 1 (reines Einzelstyling) - Straßen
+# apply_best_style: mode 1 (pure single-symbol styling) - roads
 # ----------------------------------------------------------------------
 
 def test_mode1_line_layer_applies_road_styling_when_enabled(engine, symbols_loaded):
@@ -93,11 +93,11 @@ def test_mode1_line_layer_applies_road_styling_when_enabled(engine, symbols_load
     assert "Modus 1" in result["message"]
 
 
-# Regressionstest für den Bugfix in apply_road_symbol_mapping:
-# Der Straßennamen-Code (inkl. finalem "return True") lag vorher komplett im
-# "else"-Zweig (Modus 2) und wurde im reinen Einzelstyling (Modus 1) nie erreicht.
-# Dadurch endete die Funktion in Modus 1 ohne Rückgabewert (None/falsy), und der
-# "Show Road Names"-Haken hatte dort keinerlei Wirkung.
+# Regression test for the bug fix in apply_road_symbol_mapping:
+# The road-name code path (including the final "return True") previously lived
+# entirely inside the "else" branch (mode 2) and was never reached in pure
+# single-symbol styling (mode 1). As a result, the function ended in mode 1
+# without a return value (None/falsy), and the "Show Road Names" toggle had no effect.
 def test_mode1_line_layer_respects_road_labels_toggle(engine, symbols_loaded):
     layer_labels_on = make_line_layer()
     add_feature(layer_labels_on, ["motorway", "Autobahn 1"])
@@ -114,12 +114,11 @@ def test_mode1_line_layer_respects_road_labels_toggle(engine, symbols_loaded):
     assert layer_labels_off.labelsEnabled() is False
 
 
-# Regressionstest für den Bugfix in apply_road_symbol_mapping:
-# Der Block "Symbol-Ebenen aktivieren" (setUsingSymbolLevels) sowie das Erzwingen
-# von rundem Kappen-/Verbindungsstil lag vorher komplett im "else"-Zweig (Modus 2)
-# und wurde im reinen Einzelstyling (Modus 1) nie ausgeführt. Dadurch überlagerten
-# sich unterschiedlich dicke Straßenkategorien (z.B. Autobahn über Nebenstraße)
-# nicht sauber, weil Symbol-Ebenen in Modus 1 immer deaktiviert blieben.
+# Regression test for the bug fix in apply_road_symbol_mapping:
+# The block that enables symbol levels (setUsingSymbolLevels) and enforces round
+# cap/join styles previously lived entirely inside the "else" branch (mode 2)
+# and never ran in pure single-symbol styling (mode 1). As a result, road
+# categories with different widths did not stack cleanly in mode 1.
 def test_mode1_line_layer_enables_symbol_levels_and_round_caps(engine, symbols_loaded):
     from qgis.PyQt.QtCore import Qt
 
@@ -133,7 +132,7 @@ def test_mode1_line_layer_enables_symbol_levels_and_round_caps(engine, symbols_l
     renderer = layer.renderer()
     assert renderer.usingSymbolLevels() is True
 
-    # Mindestens eine Kategorie muss einen rund gekappten/verbundenen Symbol-Layer haben
+    # At least one category must have a symbol layer with round joins/caps
     found_round_join = False
     for category in renderer.categories():
         symbol = category.symbol()
@@ -146,13 +145,11 @@ def test_mode1_line_layer_enables_symbol_levels_and_round_caps(engine, symbols_l
 
 
 def test_mode1_line_layer_hierarchy_toggle_off_keeps_custom_mapping_but_disables_symbol_levels(engine, symbols_loaded):
-    # REPARATUR: Der Haken "Straßen-Hierarchie & dicke Liniendesigns aktivieren"
-    # (enable_advanced_road_features) ist laut GUI-Beschriftung NUR für die
-    # Hierarchie-Extras (Symbolebenen-Verschmelzung + runde Kappen/Verbindungen)
-    # zuständig - nicht dafür, das gesamte Straßenstyling (Custom-Mappings mit
-    # Farben/Symbolen pro Straßentyp) abzuschalten. Vorher wurde bei deaktiviertem
-    # Haken das Custom-Mapping komplett übersprungen und stattdessen eine einfache
-    # graue Linie erzwungen ("Straßen im Standard-Look belassen (Basis aus)").
+    # FIX: According to the GUI label, the "Enable road hierarchy & thick line
+    # designs" toggle (enable_advanced_road_features) is responsible only for
+    # hierarchy extras (symbol-level merging plus round caps/joins), not for
+    # disabling the complete road styling. Previously, disabling it skipped the
+    # custom mapping entirely and forced a plain gray line instead.
     layer = make_line_layer()
     add_feature(layer, ["motorway", "Autobahn 1"])
     config = _simple_config(road_style_mode=1, enable_advanced_road_features=False)
@@ -161,14 +158,14 @@ def test_mode1_line_layer_hierarchy_toggle_off_keeps_custom_mapping_but_disables
 
     assert result["success"] is True
     renderer = layer.renderer()
-    # Custom-Mapping bleibt aktiv: Renderer ist weiterhin kategorisiert, nicht grau/flach.
+    # Custom mapping stays active: the renderer remains categorized, not flat gray.
     assert renderer.type() == "categorizedSymbol"
-    # Aber die Hierarchie-Extras sind aus:
+    # But the hierarchy extras are disabled:
     assert renderer.usingSymbolLevels() is False
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: Modus 1 - Gebäude (Polygon)
+# apply_best_style: mode 1 - buildings (polygon)
 # ----------------------------------------------------------------------
 
 def test_mode1_polygon_building_layer_applies_building_styling(engine, symbols_loaded):
@@ -193,18 +190,17 @@ def test_mode1_polygon_building_layer_disabled_reports_failure(engine, symbols_l
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: Modus 1 - Gebäudebeschriftung folgt nur ihrem eigenen
-# Haken (enable_building_labels), nicht dem 2.5D-Schatten-Haken.
+# apply_best_style: mode 1 - building labels follow only their own
+# toggle (enable_building_labels), not the 2.5D shadow toggle.
 #
-# Vorher wurde in apply_building_symbol_mapping() geprüft:
+# Previously, apply_building_symbol_mapping() checked:
 #   "(StyleEngine.enable_building_labels is True and has_name)
 #    or StyleEngine.enable_building_shadow is True"
-# Das globale Klassenattribut StyleEngine.enable_building_shadow wurde
-# aber nur aktualisiert, wenn der Dialog offen war und der Nutzer den
-# Schatten-Haken klickte - bei einem headless run() blieb es auf seinem
-# zuletzt gesetzten (u.U. veralteten) Stand. Zusätzlich zwang die
-# "or"-Verknüpfung die Beschriftung immer an, sobald der Schatten-Haken
-# aktiv war, unabhängig vom eigentlichen Beschriftungs-Haken.
+# However, the global class attribute StyleEngine.enable_building_shadow was
+# updated only while the dialog was open and the user clicked the shadow toggle.
+# During a headless run(), it could remain at its last, potentially stale value.
+# In addition, the "or" condition forced labeling on whenever the shadow toggle
+# was active, regardless of the actual labeling toggle.
 # ----------------------------------------------------------------------
 
 def test_mode1_building_labels_follow_only_their_own_toggle(engine, symbols_loaded):
@@ -234,17 +230,17 @@ def test_mode1_building_labels_follow_only_their_own_toggle(engine, symbols_load
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: Modus 1 - Landuse-Polygone (Regressionstest für den Bugfix)
+# apply_best_style: mode 1 - landuse polygons (regression test for the bug fix)
 #
-# Vorher rief der Code eine nicht existierende Methode namens
+# Previously, the code called a non-existent method named
 # "apply_landuse_symbol_mapping" auf. Der hasattr()-Check war deshalb immer
-# False und Landuse-Layer wurden im Modus 1 stillschweigend übersprungen -
-# der Haken "Show Landuse Labels" hatte dadurch keinerlei Wirkung.
+# False, so landuse layers were silently skipped in mode 1 and the
+# "Show Landuse Labels" toggle had no effect.
 # ----------------------------------------------------------------------
 
 def test_mode1_polygon_landuse_layer_is_no_longer_skipped(engine, symbols_loaded):
     layer = make_polygon_layer()
-    # Landuse-Indikatoren dominieren gegenüber Gebäude-Indikatoren
+    # Landuse indicators outweigh building indicators
     add_feature(layer, [None, None, "forest", "forest", "Wald 1"])
     config = _simple_config(road_style_mode=1, enable_landuse_labels=True)
 
@@ -271,10 +267,10 @@ def test_mode1_polygon_landuse_layer_respects_label_toggle(engine, symbols_loade
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: Modus 2 - Landuse-Beschriftung folgt dem Config-Haken
-# (Regressionstest für dasselbe Bug-Muster wie bei den Gebäude-Bools):
-# vorher wurde hier "StyleEngine.enable_landuse_labels" (stale Klassen-
-# attribut) statt der lokal aus der Config abgeleiteten Variable gelesen.
+# apply_best_style: mode 2 - landuse labeling follows the config toggle
+# (regression test for the same bug pattern as the building booleans):
+# previously, this used "StyleEngine.enable_landuse_labels" (a stale class
+# attribute) instead of the variable derived locally from config.
 # ----------------------------------------------------------------------
 
 def test_mode2_polygon_landuse_layer_respects_label_toggle(engine, symbols_loaded):
@@ -292,7 +288,7 @@ def test_mode2_polygon_landuse_layer_respects_label_toggle(engine, symbols_loade
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: Modus 1 - Punkte (POIs)
+# apply_best_style: mode 1 - points (POIs)
 # ----------------------------------------------------------------------
 
 def test_mode1_point_layer_applies_point_styling_when_enabled(engine, symbols_loaded):
@@ -320,7 +316,7 @@ def test_mode1_point_layer_disabled_reports_failure(engine, symbols_loaded):
 
 
 def test_mode1_point_layer_without_fclass_field_reports_failure(engine, symbols_loaded):
-    layer = make_point_layer(fields="field=name:string")  # kein 'fclass'-Feld vorhanden
+    layer = make_point_layer(fields="field=name:string")  # No 'fclass' field present
     add_feature(layer, ["Krankenhaus 1"])
     config = _simple_config(road_style_mode=1, enable_advanced_point_features=True)
 

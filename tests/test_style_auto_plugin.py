@@ -1,7 +1,7 @@
-# Style Auto Plugin - Regressionstests für style_auto_plugin.py (run())
+# Style Auto Plugin - Regression tests for style_auto_plugin.py (run())
 #
-# Diese Tests benötigen eine echte QGIS-Python-Umgebung, da style_auto_plugin.py
-# u.a. qgis.gui.QgsMapLayerComboBox importiert.
+# These tests require a real QGIS Python environment because
+# style_auto_plugin.py imports qgis.gui.QgsMapLayerComboBox, among others.
 #
 #   "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
 import json
@@ -11,7 +11,7 @@ import pytest
 
 
 class _FakeSignal:
-    """Ersetzt QgsMapCanvas.renderComplete, ohne eine echte Qt-Signal-Instanz zu brauchen."""
+    """Replaces QgsMapCanvas.renderComplete without requiring a real Qt signal object."""
 
     def connect(self, slot):
         pass
@@ -54,17 +54,17 @@ class _FakeLayerCombo:
 
 @pytest.fixture
 def plugin_with_isolated_config(qgis_app, tmp_path, monkeypatch):
-    """Baut eine StyleAutoPlugin-Instanz, deren style_config.json in einem tmp-Ordner liegt,
-    damit Tests unabhängig von der echten Konfigurationsdatei im Plugin-Verzeichnis laufen."""
+    """Build a StyleAutoPlugin instance whose style_config.json lives in a tmp folder
+    so tests run independently from the real config file in the plugin directory."""
     from style_auto_plugin.style_auto_plugin import StyleAutoPlugin
     import style_config
 
-    # Minimal gültige Konfigurationsdatei für den Konstruktor (get_config() beim __init__).
+    # Minimally valid config file for the constructor (get_config() during __init__).
     base_config_path = tmp_path / "style_config.json"
     base_config_path.write_text(json.dumps({}), encoding="utf-8")
 
-    # style_auto_plugin.py importiert get_config direkt ("from .style_config import get_config"),
-    # daher muss der Name im style_auto_plugin-Modul selbst gepatcht werden.
+    # style_auto_plugin.py imports get_config directly ("from .style_config import get_config"),
+    # so the name must be patched in the style_auto_plugin module itself.
     from style_auto_plugin import style_auto_plugin as sap_module
 
     def _fake_get_config():
@@ -79,7 +79,7 @@ def plugin_with_isolated_config(qgis_app, tmp_path, monkeypatch):
 
 
 def _run_with_recorded_config(plugin, layer):
-    """Führt plugin.run() aus und gibt die Config zurück, mit der apply_best_style() aufgerufen wurde."""
+    """Run plugin.run() and return the config passed to apply_best_style()."""
     recorded = {}
 
     def _fake_apply_best_style(layer, config, plugin_dir=None):
@@ -93,10 +93,10 @@ def _run_with_recorded_config(plugin, layer):
 
 
 # ----------------------------------------------------------------------
-# Regressionstest für den Bugfix: enable_advanced_*_features wurden aus der
-# JSON-Datei geschrieben (open_config()), aber in run() nie wieder eingelesen.
-# Dadurch griff in style_engine.py immer der getattr()-Default True, egal was
-# der Nutzer in der GUI (Straßen-/Gebäude-/Punkt-"Basis"-Haken) eingestellt hatte.
+# Regression test for the bug fix: enable_advanced_*_features were written to
+# the JSON file (open_config()) but never read back in run(). As a result,
+# style_engine.py always used the getattr(..., True) default, regardless of
+# what the user selected in the GUI base toggles for roads, buildings, and points.
 # ----------------------------------------------------------------------
 
 def test_run_reads_advanced_road_features_false_from_json(plugin_with_isolated_config, monkeypatch):

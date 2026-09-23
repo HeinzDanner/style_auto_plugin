@@ -4,13 +4,13 @@ import qgis.utils
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor, QFont
 from qgis.core import (
-    Qgis,  # --- FIX: Hier das Kern-Wort für die Log-Level (Critical, Warning, Info) einfügen! ---
+    Qgis,  # --- FIX: Import the core enum for log levels (Critical, Warning, Info). ---
     QgsProject,
     QgsFeatureRequest,
     QgsStyle,
     QgsUnitTypes,
     QgsMapLayerType,
-    # --- Symbologie & Effekte ---
+    # --- Symbology and effects ---
     QgsFillSymbol,
     QgsLineSymbol,
     QgsMarkerSymbol,
@@ -22,7 +22,7 @@ from qgis.core import (
     # --- Renderer ---
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
-    # --- Beschriftung (Labeling) ---
+    # --- Labeling ---
     QgsPalLayerSettings,
     QgsVectorLayerSimpleLabeling,
     QgsTextFormat,
@@ -36,10 +36,10 @@ from qgis.core import (
 
 
 # ==============================================================================
-# GLOBALER GEOFABRIK-ÜBERSETZUNGS-JOKER (Für Straßen, Gebäude und Punkte)
+# Global Geofabrik translation lookup for roads, buildings, and points
 # ==============================================================================
 GEOFABRIK_CODE_MAP = {
-    # === STRASSEN / WEGE (geom: Line) ===
+    # === ROADS / PATHS (geom: Line) ===
     "motorway": "5111",        "motorway_link": "5112",
     "trunk": "5113",           "trunk_link": "5114",
     "primary": "5121",         "primary_link": "5123",
@@ -52,7 +52,7 @@ GEOFABRIK_CODE_MAP = {
     "pedestrian": "5114",      "footway": "5121",
     "cycleway": "5122",        "path": "5115",
 
-    # === GEBÄUDE / POLYGONE (geom: Polygon) ===
+    # === BUILDINGS / POLYGONS (geom: Polygon) ===
     "apartments": "1500",      "house": "1501",
     "detached": "1502",        "semidetached_house": "1503",
     "terrace": "1504",         "bungalow": "1505",
@@ -70,7 +70,7 @@ GEOFABRIK_CODE_MAP = {
      "cabin": "1500",
         "": "1500","none": "1500","null": "1500","NULL": "1500",
 
-    # === POIS / PUNKTE (geom: Point) ===
+    # === POIS / POINTS (geom: Point) ===
     "station": "2001",         "subway_entrance": "2002",
     "bus_stop": "2003",        "pier": "2004",
     "airport": "2041",         "airfield": "2042",
@@ -120,14 +120,14 @@ class StyleEngine:
         self.config = config
         self._symbol_cache = {}
 
-        # --- ABSOLUT UNABHÄNGIGE FLAGS (Kernelemente) ---
-        self.enable_labels = False  # Für Straßen-Beschriftung
-        self.enable_building_labels = False  # Für Gebäude-Beschriftung
-        self.enable_building_smoothing = True  # Standard: Glättung an
-        self.enable_building_shadow = True  # Standard: Schatten an
-        self.enable_landuse_labels = True  # Standard: Landuse an
+        # --- Independent runtime flags (core features) ---
+        self.enable_labels = False  # For road labeling
+        self.enable_building_labels = False  # For building labeling
+        self.enable_building_smoothing = True  # Default: smoothing enabled
+        self.enable_building_shadow = True  # Default: shadow enabled
+        self.enable_landuse_labels = True  # Default: landuse labels enabled
 
-        # Einmalig synchronisieren, falls beim Start eine Config existiert
+        # Synchronize once if a config already exists at startup
         if self.config:
             self.sync_runtime_bools_from_config(self.config)
 
@@ -155,7 +155,7 @@ class StyleEngine:
             raw = getattr(cfg, "enable_building_labels")
             source = "attr"
 
-        # --- DER RETTENDE FIX: Wenn raw None ist, nimm den bestehenden Zustand! ---
+        # FIX: If raw is None, keep the existing state.
         if raw is None:
             normalized = self.enable_building_labels
         elif isinstance(raw, bool):
@@ -192,10 +192,10 @@ class StyleEngine:
         }
 
     def _get_attr(self, obj, *names, default=None):
-        """Liest einen Wert sowohl aus dict-Configs als auch aus Objekt-Configs
-        (z.B. PluginConfig) unter einem oder mehreren möglichen Schlüsseln aus.
-        Konsolidiert die vorher mehrfach duplizierte
-        'isinstance(config, dict) -> .get() else getattr()'-Logik."""
+        """Read a value from either dict-based or object-based configs
+        (for example PluginConfig) using one or more possible keys.
+        Consolidates the previously duplicated
+        'isinstance(config, dict) -> .get() else getattr()' logic."""
         if isinstance(obj, dict):
             for name in names:
                 if name in obj:
@@ -502,7 +502,7 @@ class StyleEngine:
         if score < min_match_score:
             return -1, reasons + ["score {0} < min_match_score {1}".format(score, min_match_score)], None
 
-        # HIER kommt der neue Block hin:
+        # Additional value-based scoring is applied here.
         if detected_field_name:
             bonus, bonus_reasons = self.score_field_values_for_layer_type(layer, detected_field_name)
             score += bonus
@@ -545,7 +545,7 @@ class StyleEngine:
 
     def score_field_values_for_layer_type(self, layer, field_name):
         """
-        Bonus-Score für eindeutige Landuse/Building-Fälle basierend auf Attributwerten.
+        Bonus score for clear landuse/building cases based on attribute values.
         """
         provider = layer.dataProvider()
         field_index = layer.fields().indexOf(field_name)
@@ -556,7 +556,7 @@ class StyleEngine:
         reasons = []
         bonus = 0
 
-        # Nur eindeutige Fälle verwenden
+        # Use only unambiguous cases
         landuse_values = {"forest", "meadow", "farmland", "industrial"}
         building_values = {"school", "church", "hospital", "apartments", "house"}
 
@@ -693,12 +693,12 @@ class StyleEngine:
             "dot": "dot"
         }
         key = ("line", style_def.color, style_def.width, style_def.penstyle)
-        # aus Cache holen
+        # Load from cache
         symbol = self._symbol_cache.get(key)
         if symbol is not None:
             return symbol.clone()
 
-        # neu bauen und cachen
+        # Rebuild and cache
         symbol = QgsLineSymbol.createSimple({
             "color": style_def.color,
             "width": str(style_def.width),
@@ -713,7 +713,7 @@ class StyleEngine:
         if symbol is not None:
             return symbol.clone()
 
-        # hier deine bestehende Erzeugung
+        # Existing symbol creation logic
         symbol = QgsFillSymbol.createSimple({
             "color": style_def.color,
             "outline_width": str(style_def.width),
@@ -762,7 +762,7 @@ class StyleEngine:
         values = set()
         for f in layer.getFeatures():
             v = f[idx]
-            # None/NULL ignorieren
+            # Ignore None/NULL
             if v is None:
                 continue
             values.add(v)
@@ -776,7 +776,7 @@ class StyleEngine:
 
         layer_geometry = self.get_layer_geometry_type_name(layer)
 
-        # WICHTIG: Feldname bestimmen
+        # IMPORTANT: determine the field name
         existing_field_name = detected_field_name or fieldruleset.field_name
         if not existing_field_name:
             return False
@@ -878,8 +878,8 @@ class StyleEngine:
             return False
 
         def _fallback_key(cat):
-            # Fallbacks sollen nach hinten:
-            # True > False beim Sortieren, also 1 für Fallback, 0 für normal
+            # Keep fallback entries at the end:
+            # True > False when sorting, so 1 for fallback, 0 for normal
             is_fallback = cat.label().startswith("[F]")
             return (is_fallback, str(cat.value()))
 
@@ -911,16 +911,16 @@ class StyleEngine:
             return False, "Kein qml_path angegeben."
 
         # ==============================================================================
-        # --- 1. SCHRITT: BLITZSCHNELLER XML-PRÜFER (Killt die 10 Sekunden Wartezeit) ---
+        # --- Step 1: fast XML sanity check (avoids the 10-second wait) ---
         # ==============================================================================
         if qml_path and os.path.exists(qml_path) and "roads_fclass.qml" in str(qml_path):
             try:
                 with open(qml_path, 'r', encoding='utf-8', errors='ignore') as f:
                     erste_zeile = f.readline()
 
-                # Wenn die Datei korrupt ist (Zeile 1 kaputt), erkennen wir das in 0ms!
+                # If the file is corrupt (broken from line 1), detect it immediately.
                 if not erste_zeile or "<" not in erste_zeile:
-                    # Text-Meldung restlos entfernt – der blitzschnelle Absturzschutz bleibt voll aktiv!
+                    # Keep the fast crash guard, but without extra log noise.
                     return False, "Datei ist korrupt."
             except Exception:
                 pass
@@ -944,8 +944,8 @@ class StyleEngine:
             if not detail:
                 detail = "QML konnte nicht geladen werden."
 
-            # Sicherheitsnetz: Wenn das Laden gewollt blockiert oder wegen Korruption abgebrochen wurde,
-            # unterdrücken wir das rote CRITICAL im Log, damit das Plugin sauber weiterläuft.
+            # Safety net: if loading is intentionally blocked or aborted due to corruption,
+            # suppress the red CRITICAL log entry so the plugin can continue cleanly.
             if qml_path and "roads_fclass.qml" in str(qml_path):
                 return False, detail
 
@@ -1076,9 +1076,9 @@ class StyleEngine:
         geom_type = self.get_layer_geometry_type_name(layer)
 
         # ==============================================================================
-        # Modus und kartografische Bools EINMALIG bestimmen (vorher hier doppelt berechnet)
-        # REPARATUR: road_style_mode wurde bisher nur per getattr() gelesen, wodurch ein
-        # dict-basiertes Config-Objekt (z.B. aus der Dialog-GUI) immer auf Modus 2 zurückfiel.
+        # Determine the mode and cartographic booleans once (previously duplicated here)
+        # FIX: road_style_mode was previously read only via getattr(), causing a
+        # dict-based config object (for example from the dialog GUI) to fall back to mode 2.
         # ==============================================================================
         try:
             mode = int(self._get_attr(config, "road_style_mode", default=2))
@@ -1098,13 +1098,13 @@ class StyleEngine:
 
         result = None
         # ==============================================================================
-        # CASUS 0: REINES BASIS-STYLING (Modus 0)
+        # CASE 0: pure base styling (mode 0)
         # ==============================================================================
         if mode == 0:
-            # 1. Erst das normale JSON-Basis-Styling ausführen
+            # 1. First apply the normal JSON base styling
             result = self._execute_base_styling(layer, config, plugin_dir)
 
-            # 2. Spezifische Korrekturen/Bremsen für Modus 0
+            # 2. Apply mode-0-specific corrections/constraints
             if geom_type == "line":
                 result = {"success": True, "message": "Basis-Straßen-Styling angewendet (Modus 0)."}
 
@@ -1121,17 +1121,17 @@ class StyleEngine:
                 result = {"success": True, "message": "Basis-Punkt-Styling angewendet (Modus 0)."}
 
         # ==============================================================================
-        # CASUS 1: REINES EINZELSTYLING (Modus 1 - Basis-Styling wird komplett ignoriert)
+        # CASE 1: pure single-symbol styling (mode 1 - base styling is fully ignored)
         # ==============================================================================
         elif mode == 1:
-            # INTERNE WEICHE NACH GEOMETRIE-TYP
+            # Internal branch by geometry type
             if geom_type == "line":
-                # REPARATUR: enable_road_features ("Straßen-Hierarchie & dicke Liniendesigns")
-                # steuert NUR NOCH die Hierarchie-Extras (Symbolebenen-Verschmelzung + runde
-                # Kappen/Verbindungen) innerhalb von apply_road_symbol_mapping selbst. Die
-                # Custom-Mappings (Farben/Symbole pro Straßentyp) müssen unabhängig davon
-                # IMMER angewendet werden - vorher wurde bei deaktiviertem Haken das komplette
-                # Straßenstyling übersprungen und stattdessen eine einfache graue Linie erzwungen.
+                # FIX: enable_road_features ("Enable road hierarchy & thick line designs")
+                # now controls only the hierarchy extras (symbol-level merging and round
+                # caps/joins) inside apply_road_symbol_mapping itself. The custom mappings
+                # (colors/symbols per road type) must always be applied independently.
+                # Previously, disabling the toggle skipped the full road styling and forced
+                # a plain gray line instead.
                 success = self.apply_road_symbol_mapping(
                     layer, config=config, reines_einzelstyling=True, enable_labels=enable_road_labels
                 )
@@ -1140,13 +1140,13 @@ class StyleEngine:
 
             elif geom_type == "polygon":
 
-                # --- SEMANTISCHES SCORING (IDENTISCH ZU MODUS 2) ---
+                # --- Semantic scoring (identical to mode 2) ---
 
                 building_score = 0
 
                 landuse_score = 0
 
-                # Wir scannen die ersten 50 Zeilen des Layers für maximale Performance
+                # Scan the first 50 features for best performance
                 request = QgsFeatureRequest().setLimit(50)
 
                 idx_building = layer.fields().indexOf("building")
@@ -1159,7 +1159,7 @@ class StyleEngine:
 
                 for feature in layer.getFeatures(request):
 
-                    # Gebäude-Indikatoren prüfen
+                    # Check building indicators
 
                     if idx_building >= 0 and feature.attribute(idx_building):
 
@@ -1175,7 +1175,7 @@ class StyleEngine:
                         if val in ["apartments", "house", "detached", "commercial", "industrial", "residential"]:
                             building_score += 2
 
-                    # Flächen-Indikatoren (Landuse) prüfen
+                    # Check area indicators (landuse)
 
                     if idx_landuse >= 0 and feature.attribute(idx_landuse):
 
@@ -1191,13 +1191,13 @@ class StyleEngine:
                         if val in ["forest", "park", "grass", "water", "meadow", "commercial", "industrial"]:
                             landuse_score += 1
 
-                # --- DIE ENTSCHEIDUNG ---
+                # --- Decision ---
 
                 if landuse_score > building_score or (idx_landuse >= 0 and idx_building < 0):
 
-                    # REPARATUR: "apply_landuse_symbol_mapping" existierte nie als Methode,
-                    # wodurch der Landuse-Haken (enable_landuse_labels) im Modus 1 wirkungslos blieb.
-                    # Wir nutzen dieselbe Beschriftungs-Logik wie im Modus 2.
+                    # FIX: "apply_landuse_symbol_mapping" never existed as a method,
+                    # which made the landuse toggle (enable_landuse_labels) ineffective
+                    # in mode 1. Reuse the same labeling logic as in mode 2.
                     self.apply_landuse_advanced_features(layer, enable_labels=enable_landuse_labels)
 
                     result = {"success": True, "message": "Reines Flächen-Einzelstyling angewendet (Modus 1)."}
@@ -1239,15 +1239,15 @@ class StyleEngine:
 
         elif mode == 2:
 
-            # 1. Zuerst immer das JSON-Basis-Styling vorfärben
+            # 1. Always pre-apply the JSON base styling first
 
             result = self._execute_base_styling(layer, config, plugin_dir)
 
-            # 2. Danach die erweiterten Einzelstylings injizieren
+            # 2. Then inject the advanced single-symbol styling
 
-            # REPARATUR: enable_road_features darf hier nicht mehr das Aufrufen der
-            # Custom-Mappings verhindern - es steuert innerhalb von apply_road_symbol_mapping
-            # ausschließlich noch die Hierarchie-Extras (Symbolebenen + runde Kappen/Verbindungen).
+            # FIX: enable_road_features must no longer prevent the custom mappings
+            # from being called here; within apply_road_symbol_mapping it controls
+            # only the hierarchy extras (symbol levels plus round caps/joins).
 
             if geom_type == "line":
 
@@ -1278,7 +1278,7 @@ class StyleEngine:
 
                 # ==============================================================================
 
-                # DETEKTIV-LOGIK: Wir gehen AKTIV in die Attributtabelle und scannen die Werte!
+                # Detection logic: inspect the attribute table directly and scan values
 
                 # ==============================================================================
 
@@ -1286,7 +1286,7 @@ class StyleEngine:
 
                 landuse_score = 0
 
-                # Wir begrenzen den Scan auf 50 Zeilen für maximale QGIS-Performance
+                # Limit the scan to 50 features for best QGIS performance
 
                 request = QgsFeatureRequest().setLimit(50)
 
@@ -1298,11 +1298,11 @@ class StyleEngine:
 
                 idx_fclass = layer.fields().indexOf("fclass")
 
-                # Schleife durch die echten Tabelleneinträge
+                # Loop through the real table entries
 
                 for feature in layer.getFeatures(request):
 
-                    # 1. Gebäude-Werte in der Tabelle zählen
+                    # 1. Count building values in the table
 
                     if idx_building >= 0 and feature.attribute(idx_building):
 
@@ -1318,7 +1318,7 @@ class StyleEngine:
                         if val in ["apartments", "house", "detached", "commercial", "industrial", "residential"]:
                             building_score += 2
 
-                    # 2. Flächen-Werte (Landuse) in der Tabelle zählen
+                    # 2. Count area values (landuse) in the table
 
                     if idx_landuse >= 0 and feature.attribute(idx_landuse):
 
@@ -1334,7 +1334,7 @@ class StyleEngine:
                         if val in ["forest", "park", "grass", "water", "meadow", "scrub", "heath"]:
                             landuse_score += 2
 
-                # Sicherheits-Fallback über den Namen, falls die Tabelle leer war (0 zu 0 steht)
+                # Safety fallback based on the layer name if the table was empty (0 vs. 0)
 
                 layer_name_lower = (layer.name() or "").lower()
 
@@ -1350,18 +1350,18 @@ class StyleEngine:
 
                 # ==============================================================================
 
-                # DIE AUSWERTUNG ANHAND DER ECHTEN TABELLEN-SCORES
+                # Evaluate using the actual table-based scores
 
                 # ==============================================================================
 
                 if landuse_score > building_score:
 
-                    # Eindeutig ein Flächen/Landuse-Layer anhand der Tabellenwerte!
+                    # Clearly a landuse/area layer based on the table values
 
-                    # REPARATUR: vorher stand hier "StyleEngine.enable_landuse_labels" (stale
-                    # Klassenattribut, nur bei offenem Dialog aktualisiert) statt der bereits
-                    # oben korrekt aus der Config abgeleiteten lokalen Variable - exakt dasselbe
-                    # Bug-Muster wie bei den Gebäude-Bools.
+                    # FIX: this previously used "StyleEngine.enable_landuse_labels"
+                    # (a stale class attribute updated only while the dialog was open)
+                    # instead of the local variable correctly derived from config above—
+                    # the same bug pattern seen with the building booleans.
                     self.apply_landuse_advanced_features(layer, enable_labels=enable_landuse_labels)
 
                     result = {"success": True, "message": "Kombiniertes Landuse-Flächenstyling erfolgreich (Modus 2)."}
@@ -1369,7 +1369,7 @@ class StyleEngine:
 
                 else:
 
-                    # Eindeutig ein Gebäude-Layer anhand der Tabellenwerte!
+                    # Clearly a building layer based on the table values
 
                     if enable_building_features:
 
@@ -1393,14 +1393,14 @@ class StyleEngine:
                         )
 
                         result = {"success": True, "message": "Kombiniertes Gebäude-Styling erfolgreich (Modus 2)."}
-        # Sicherheitsnetz: Falls result noch None ist
+        # Safety net: if result is still None
         if result is None:
             result = {"success": True, "message": "Layer im Standard-Look belassen"}
         return result
 
     def _execute_base_styling(self, layer, config, plugin_dir=None):
-        """Eigene Methode für das bisherige Regelwerk und die QML/Profil-Suche."""
-        # 1. style_profile versuchen
+        """Internal helper for the existing ruleset flow and QML/profile lookup."""
+        # 1. Try style_profile
         profile, detected_profile_field = self.find_style_profile(layer, config)
         if profile:
             style_source = getattr(profile, "style_source", None)
@@ -1415,18 +1415,18 @@ class StyleEngine:
                 if os.path.exists(qml_abs_path):
 
                     # ==============================================================================
-                    # --- DIE REISSLEINE: WENN DER BASIS-HAKEN BEI STRASSEN AUS IST ---
+                    # --- Hard stop: when the road base toggle is disabled ---
                     # ==============================================================================
                     road_base_aktiv = True
                     if config:
                         road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
 
-                    # Wenn es sich um den Straßen-Layer handelt und der Haken AUS ist:
+                    # If this is the road layer and the toggle is OFF:
                     if layer and "road" in layer.name().lower() and road_base_aktiv is False:
-                        # Log-Nachricht restlos entfernt, die logische Sperre bleibt aktiv!
+                        # Keep the logical block, but without extra log output.
                         success = False
                     else:
-                        # Nur wenn der Haken AN ist, darf QGIS die Datei wirklich anfassen:
+                        # Only when the toggle is ON may QGIS actually load the file:
                         success, detail = self.apply_qml_style(layer, qml_abs_path)
 
                     # ==============================================================================
@@ -1449,7 +1449,7 @@ class StyleEngine:
                 if isinstance(result, dict) and result.get("success"):
                     return result
 
-        # 2. layerruleset versuchen
+        # 2. Try layerruleset
         layerruleset, detected_ruleset_field = self.find_layer_ruleset(layer, config)
 
         return self.apply_layer_ruleset_style(layer, layerruleset, detected_field_name=detected_ruleset_field)
@@ -1459,16 +1459,15 @@ class StyleEngine:
             return False
 
         # ==============================================================================
-        # --- STRASSEN-HIERARCHIE-HAKEN (Nutzt direkt die übergebene Config) ---
+        # --- Road hierarchy toggle (uses the passed config directly) ---
         # ==============================================================================
-        # REPARATUR: road_base_aktiv steuerte hier vorher einen kompletten "Master-Stopp",
-        # der bei deaktiviertem Haken JEDES Straßenstyling (inkl. Custom-Mappings) durch
-        # eine einfache graue Linie ersetzte. Der Haken heißt in der GUI aber "Straßen-
-        # Hierarchie & dicke Liniendesigns aktivieren" und soll laut Beschriftung nur die
-        # Hierarchie-Extras steuern (Symbolebenen-Verschmelzung + runde Kappen/Verbindungen),
-        # nicht das Straßenstyling insgesamt. road_base_aktiv wird daher weiter unten nur
-        # noch als Ein/Aus-Schalter für _optimize_line_caps_and_joins() und
-        # setUsingSymbolLevels() verwendet.
+        # FIX: road_base_aktiv previously acted as a full master stop, replacing all
+        # road styling—including custom mappings—with a plain gray line when disabled.
+        # In the GUI, however, the toggle is labeled "Enable road hierarchy & thick
+        # line designs" and is intended to control only hierarchy extras (symbol-level
+        # merging plus round caps/joins), not road styling as a whole. It is therefore
+        # used below only as an on/off switch for _optimize_line_caps_and_joins() and
+        # setUsingSymbolLevels().
         road_base_aktiv = True
         if config:
             road_base_aktiv = self._get_attr(config, "enable_advanced_road_features", default=True)
@@ -1483,14 +1482,14 @@ class StyleEngine:
         if not renderer:
             return False
 
-        # Dynamisch ermitteln, auf welcher Spalte QGIS gerade arbeitet
+        # Determine dynamically which field QGIS is currently using
         renderer_field = "fclass"
         if hasattr(renderer, "classAttribute") and renderer.classAttribute():
             renderer_field = renderer.classAttribute().strip().lower()
         elif fields.indexOf("code") >= 0 and fields.indexOf("fclass") < 0:
             renderer_field = "code"
 
-        # --- WASSERDICHTER, SPALTENFREIER JSON-EINFANG FÜR STRASSEN ---
+        # --- Robust field-agnostic JSON mapping for roads ---
         mapping = {}
         config_mappings = []
         if config:
@@ -1501,13 +1500,12 @@ class StyleEngine:
                 if isinstance(entry, dict) and entry.get("active", True) and entry.get("geom") == "Line":
                     gui_value = str(entry.get("value", "")).strip().lower()
 
-                    # --- DER PROFI-JOKER-FINDER ---
-                    # Wir prüfen die globale GEOFABRIK_CODE_MAP ganz oben in der Datei!
+                    # --- Match through the global GEOFABRIK_CODE_MAP defined above ---
                     target_values = [gui_value]
                     if gui_value in GEOFABRIK_CODE_MAP:
                         target_values.append(GEOFABRIK_CODE_MAP[gui_value])
 
-                    # Wenn der Layer 'code' nutzt, erzwingen wir die Code-Nummer
+                    # If the layer uses 'code', force the numeric code
                     if renderer_field == "code":
                         if gui_value in GEOFABRIK_CODE_MAP:
                             target_value = GEOFABRIK_CODE_MAP[gui_value]
@@ -1518,18 +1516,18 @@ class StyleEngine:
                             "symbol_name": entry.get("style", ""),
                             "legend_label": entry.get("label", "")
                         }
-                    # Wenn der Layer Klartext spricht (fclass/highway) oder spaltenunabhängig läuft:
+                    # If the layer uses clear-text values (fclass/highway) or is field-agnostic:
                     else:
                         for t_val in target_values:
                             mapping[t_val] = {
                                 "symbol_name": entry.get("style", ""),
                                 "legend_label": entry.get("label", "")
                             }
-        # Hilfsfunktion für abgerundete Kurven und Kappen
-        # REPARATUR: QgsSimpleLineSymbolLayer (und Verwandte) heißen in der QGIS-API
-        # setPenJoinStyle()/setPenCapStyle() - nicht setJoinStyle()/setCapStyle(). Der
-        # alte hasattr()-Check war deshalb IMMER False, wodurch runde Kappen/Verbindungen
-        # weder in Modus 1 noch in Modus 2 jemals tatsächlich gesetzt wurden.
+        # Helper for rounded joins and line caps
+        # FIX: In the QGIS API, QgsSimpleLineSymbolLayer and related classes use
+        # setPenJoinStyle()/setPenCapStyle(), not setJoinStyle()/setCapStyle().
+        # The previous hasattr() check was therefore always False, so round
+        # caps/joins were never actually applied in either mode 1 or mode 2.
         def _optimize_line_caps_and_joins(symbol):
             if not symbol:
                 return
@@ -1541,9 +1539,9 @@ class StyleEngine:
                     layer_item.setPenCapStyle(Qt.RoundCap)
 
 
-        # --- STRATEGIE FÜR REINES EINZELSTYLING (Modus 1) ---
+        # --- Strategy for pure single-symbol styling (mode 1) ---
         if reines_einzelstyling:
-            # Dynamisch ermitteln, auf welcher Spalte QGIS gerade arbeitet
+            # Determine dynamically which field QGIS is currently using
             renderer_field = "fclass"
             if hasattr(renderer, "classAttribute") and renderer.classAttribute():
                 renderer_field = renderer.classAttribute().strip().lower()
@@ -1552,17 +1550,17 @@ class StyleEngine:
 
             updated_categories = []
 
-            # Sicherheits-Set gegen doppelte Legenden-Einträge
+            # Safety set against duplicate legend entries
             erstellte_labels = set()
 
             for key, cfg in mapping.items():
                 label_name = cfg["legend_label"]
 
-                # Wenn dieses Label (z. B. "Automobilbahn") schon existiert, überspringen!
+                # If this label (for example "Automobilbahn") already exists, skip it
                 if label_name in erstellte_labels:
                     continue
 
-                # Erst in den Projektstilen suchen, dann global
+                # Search project styles first, then the global style library
                 fetched_symbol = project_style.symbol(cfg["symbol_name"])
                 if not (fetched_symbol and cfg["symbol_name"] in project_style.symbolNames()):
                     fetched_symbol = style.symbol(cfg["symbol_name"])
@@ -1572,7 +1570,7 @@ class StyleEngine:
                     if road_base_aktiv:
                         _optimize_line_caps_and_joins(cloned_symbol)
 
-                    # Der Category-Key muss zur aktiven Spalte passen
+                    # The category key must match the active field
                     category_key = key
                     if renderer_field == "code" and key in GEOFABRIK_CODE_MAP:
                         category_key = GEOFABRIK_CODE_MAP[key]
@@ -1582,12 +1580,12 @@ class StyleEngine:
                     new_cat = QgsRendererCategory(category_key, cloned_symbol, label_name)
                     updated_categories.append(new_cat)
 
-                    # Das Label als "erstellt" markieren
+                    # Mark the label as created
                     erstellte_labels.add(label_name)
 
-            # --- UNZERSTÖRBARE ABHILFE: Der "Alles andere"-Joker für Straßen ---
-            # Verhindert, dass unbenannte Straßen im Modus 1 unsichtbar werden!
-            # REPARATUR: Erzeugt die graue Linie unzerstörbar über das QGIS-Eigenschafts-System!
+            # --- Fallback catch-all: the "everything else" road category ---
+            # Prevents unnamed roads from becoming invisible in mode 1.
+            # FIX: Creates the gray line reliably through the QGIS property system.
             properties = {
                 "line_color": "#cccccc",
                 "line_width": "0.2",
@@ -1602,28 +1600,29 @@ class StyleEngine:
             if road_base_aktiv:
                 _optimize_line_caps_and_joins(fallback_symbol)
 
-            # Ein leerer String '' als Key fängt alle nicht definierten Straßen ab!
+            # An empty string '' as the key catches all undefined roads
             fallback_cat = QgsRendererCategory("", fallback_symbol, "Andere Straßen/Wege")
             updated_categories.append(fallback_cat)
 
-            # Den fertigen Renderer mit dem Joker übergeben
+            # Apply the completed renderer including the fallback category
             new_renderer = QgsCategorizedSymbolRenderer(renderer_field, updated_categories)
             layer.setRenderer(new_renderer)
 
 
-        # --- STRATEGIE FÜR HISTORISCHE STILE (Modus 2) ---
+        # --- Strategy for existing/historic styles (mode 2) ---
         else:
-            # REPARATUR: Vorher wurde hier die Klassenvariable StyleEngine.enable_advanced_road_features
-            # gelesen statt der bereits oben aus der uebergebenen Config ermittelten road_base_aktiv.
-            # Beide konnten auseinanderlaufen (z.B. bei dict-Configs oder in Tests).
+            # FIX: This previously read the class variable
+            # StyleEngine.enable_advanced_road_features instead of road_base_aktiv,
+            # which had already been derived from the passed config above. The two
+            # could drift apart (for example with dict configs or in tests).
             enable_road_features = road_base_aktiv
             if renderer.type() == "categorizedSymbol":
                 updated_categories = []
 
                 # ==============================================================================
-                # --- JETZT NEU: DER SCHNELLERE RAM-CACHE (Vor der Schleife) ---
+                # --- Faster in-memory cache (before the loop) ---
                 # ==============================================================================
-                # Wir lesen die Namensliste der Symbole hier EINZIGES MAL ein (0 ms in der Schleife!)
+                # Read the symbol-name list only once here (0 ms inside the loop)
                 available_project_symbols = set(project_style.symbolNames())
                 symbol_cache = {}
                 # ==============================================================================
@@ -1634,17 +1633,17 @@ class StyleEngine:
                         cfg = mapping[val_str]
                         symbol_name = cfg["symbol_name"]
 
-                        # --- BLITZSCHNELLER RAM-CHECK STATT NEUEM FESTPLATTEN-SCAN ---
+                        # --- Fast in-memory check instead of a new disk scan ---
                         if symbol_name not in symbol_cache:
-                            # Wir prüfen im schnellen RAM-Set, ob der Name existiert
+                            # Check in the in-memory set whether the name exists
                             if symbol_name in available_project_symbols:
                                 fetched_symbol = project_style.symbol(symbol_name)
                             else:
                                 fetched_symbol = style.symbol(symbol_name)
-                            # Im Cache für die restlichen zehntausend Straßen merken
+                            # Cache it for the remaining thousands of roads
                             symbol_cache[symbol_name] = fetched_symbol
                         else:
-                            # Direkt ohne Zeitverlust aus dem RAM-Speicher ziehen!
+                            # Fetch directly from memory without further overhead
                             fetched_symbol = symbol_cache[symbol_name]
                         # ======================================================================
 
@@ -1661,33 +1660,32 @@ class StyleEngine:
                     renderer.addCategory(cat)
 
         # ==============================================================================
-        # --- ERZWINGE DIE STRASSEN-VERSCHMELZUNG (SYMBOL LEVELS) - GILT FUER MODUS 1 UND 2 ---
-        # REPARATUR: Dieser Block lag vorher komplett im "else"-Zweig (Modus 2) und wurde
-        # daher im reinen Einzelstyling (Modus 1) nie ausgefuehrt. Dadurch blieben
-        # Symbol-Ebenen (setUsingSymbolLevels) in Modus 1 immer aus, wodurch sich dicker
-        # gezeichnete Strassen (z.B. Autobahnen) nicht sauber ueber duennere Strassen
-        # legten, und Kappen-/Verbindungsstil wirkten inkonsistent zu Modus 2.
+        # --- Enforce road stacking (symbol levels) - applies to modes 1 and 2 ---
+        # FIX: This block previously lived entirely inside the "else" branch (mode 2)
+        # and therefore never ran in pure single-symbol styling (mode 1). As a result,
+        # symbol levels stayed disabled in mode 1, so thicker roads (for example
+        # motorways) did not stack cleanly above thinner roads, and cap/join behavior
+        # differed from mode 2.
         # ==============================================================================
         active_renderer = layer.renderer()
         if active_renderer:
-            # 1. Symbol-Ebenen einschalten, damit Schichten sich nicht gegenseitig schneiden
+            # 1. Enable symbol levels so layers do not cut across each other
             if road_base_aktiv:
                 active_renderer.setUsingSymbolLevels(True)
 
-        # Optional: Falls Ihre Autobahnen immer ganz oben liegen sollen,
-        # sorgt dieser QGIS-Befehl dafür, dass sie Brücken sauber überqueren
+        # Optional: if motorways should always appear on top,
+        # this QGIS setting helps them cross bridges cleanly
         if hasattr(layer, "setFeatureBlendMode"):
-            layer.setFeatureBlendMode(0)  # Normaler Modus, verhindert Transparenz-Fehler
+            layer.setFeatureBlendMode(0)  # Normal mode; avoids transparency artifacts
 
         # ==============================================================================
-        # Straßennamen-Beschriftung und Abschluss - GILT FÜR MODUS 1 UND MODUS 2
-        # REPARATUR: Dieser Abschnitt lag vorher komplett im "else"-Zweig (Modus 2) und
-        # wurde deshalb im reinen Einzelstyling (Modus 1) nie ausgeführt. Die Funktion
-        # endete in Modus 1 dadurch ohne "return True" (implizites None), wodurch der
-        # Aufrufer immer einen falschen Fallback-Status erhielt - der Straßennamen-Haken
-        # ("Show Road Names") hatte in Modus 1 zusätzlich keinerlei Wirkung, weil hier
-        # ohnehin immer StyleEngine.enable_labels statt des übergebenen enable_labels-
-        # Parameters gelesen wurde.
+        # Road-name labeling and finalization - applies to modes 1 and 2
+        # FIX: This section previously lived entirely inside the "else" branch (mode 2)
+        # and therefore never ran in pure single-symbol styling (mode 1). That caused
+        # the function to end in mode 1 without "return True" (implicit None), so the
+        # caller received a false fallback status. The "Show Road Names" toggle also
+        # had no effect in mode 1 because the code always read StyleEngine.enable_labels
+        # instead of the passed enable_labels parameter.
         # ==============================================================================
         has_name = fields.indexOf("name") >= 0
 
@@ -1696,7 +1694,7 @@ class StyleEngine:
             label_settings.fieldName = "name"
             label_settings.placement = QgsPalLayerSettings.Line
 
-            # --- DIE COOLE DICHTE-OPTIMIERUNG VON PAGE 3 HIER INTEGRIEREN ---
+            # Density optimization for repeated road labels
             label_settings.repeatDistance = 700
             label_settings.repeatDistanceUnit = QgsUnitTypes.RenderMillimeters
             label_settings.minimumFeatureSize = 20
@@ -1716,7 +1714,7 @@ class StyleEngine:
             layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
             layer.setLabelsEnabled(True)
         else:
-            # DIE RETTUNG: Wenn der Haken aus ist, löschen wir NUR die Texte!
+            # If the toggle is off, remove only the labels
             layer.setLabelsEnabled(False)
             layer.setLabeling(None)
 
@@ -1755,15 +1753,14 @@ class StyleEngine:
                         sl.setStrokeStyle(Qt.SolidLine)
 
         def _apply_building_shadow(symbol):
-            # REPARATUR: vorher wurde hier immer das globale Klassenattribut
-            # StyleEngine.enable_building_shadow gelesen (stale, nur vom zuletzt
-            # geöffneten Dialog gesetzt). Jetzt zählt der aus der Config kommende
-            # Funktionsparameter enable_shadow, damit ein headless run() konsistent
-            # dieselbe Config-gesteuerte Entscheidung trifft.
+            # FIX: this previously always read the global class attribute
+            # StyleEngine.enable_building_shadow (stale and updated only by the
+            # most recently opened dialog). The config-driven function parameter
+            # enable_shadow now decides consistently, including in headless runs.
             if not symbol or not enable_shadow:
                 return
 
-            # Die alte 'if not enable_shadow'-Abfrage wurde hier gelöscht!
+            # The old 'if not enable_shadow' guard was removed here.
             if not hasattr(symbol, "setPaintEffect"):
                 return
 
@@ -1784,11 +1781,11 @@ class StyleEngine:
 
             _apply_building_smoothing(symbol)
 
-            # Richtiger Qt-Import direkt für die innere Funktion bereitstellen
+            # Import the correct Qt type directly for the inner function
             from qgis.PyQt.QtCore import QPointF
 
-            # REPARATUR: vorher stand hier "getattr(StyleEngine, 'enable_building_shadow', True)"
-            # (stale Klassenattribut statt des Config-gesteuerten Parameters enable_shadow).
+            # FIX: this previously used "getattr(StyleEngine, 'enable_building_shadow', True)"
+            # (a stale class attribute instead of the config-driven enable_shadow parameter).
             live_shadow = bool(enable_shadow)
 
             if live_shadow is True:
@@ -1796,7 +1793,7 @@ class StyleEngine:
                     schon_da = False
                     for idx in range(symbol.symbolLayerCount()):
                         sl = symbol.symbolLayer(idx)
-                        # Überprüfung mit dem importierten QPointF
+                        # Check using the imported QPointF
                         if hasattr(sl, "offset") and sl.offset() == QPointF(0.6, 0.6) and sl.strokeStyle() == Qt.NoPen:
                             schon_da = True
                             break
@@ -1806,7 +1803,7 @@ class StyleEngine:
                         shadow_layer.setFillColor(QColor(0, 0, 0, 45))
                         shadow_layer.setStrokeStyle(Qt.NoPen)
 
-                        # Sichere Zuweisung
+                        # Safe assignment
                         shadow_layer.setOffset(QPointF(0.6, 0.6))
                         shadow_layer.setOffsetUnit(QgsUnitTypes.RenderMillimeters)
 
@@ -1838,11 +1835,10 @@ class StyleEngine:
             return False
 
         def _dbg(msg):
-            # Schaltet die innere Hilfsfunktion absolut lautlos und crashsicher
+            # Keep the inner helper completely silent and crash-safe
             pass
 
-        # Ab hier rücken wir die nachfolgenden Zeilen (wie das Auslesen der Felder)
-        # auf exakt 8 Leerzeichen ein, damit sie auf der Methodenebene weiterlaufen:
+        # The following lines stay at method scope with the intended indentation.
         renderer_field = self.detect_best_building_field(layer, config=config, sample_limit=200)
 
         renderer_field = self.detect_best_building_field(layer, config=config, sample_limit=200)
@@ -1914,9 +1910,9 @@ class StyleEngine:
                 new_symbol = _finalize_building_symbol(new_symbol)
 
                 # ==============================================================================
-                # REPARATUR: vorher wurde hier StyleEngine.enable_building_smoothing (stale
-                # Klassenattribut) statt des Config-gesteuerten Parameters enable_smoothing
-                # gelesen - dadurch reagierte die Glättung nicht zuverlässig auf die Checkbox.
+                # FIX: this previously read StyleEngine.enable_building_smoothing
+                # (a stale class attribute) instead of the config-driven parameter
+                # enable_smoothing, so smoothing did not respond reliably to the checkbox.
                 # ==============================================================================
                 live_smoothing = enable_smoothing
 
@@ -1938,7 +1934,7 @@ class StyleEngine:
                                 layer_item.setStrokeStyle(Qt.NoPen)
                                 layer_item.setStrokeWidth(0.0)
 
-                # Ab hier läuft dein Code unverändert weiter:
+                # Continue with the existing code path unchanged:
                 category_key = val
 
                 cat = QgsRendererCategory(category_key, new_symbol, label_name)
@@ -1961,20 +1957,20 @@ class StyleEngine:
 
 
         # ------------------------------------------------------------------
-        # STRATEGIE MODUS 2: Kombiniertes Ergänzen (Gester-Stand wiederbelebt!)
+        # Mode 2 strategy: combined enhancement of the existing renderer
         # ------------------------------------------------------------------
         else:
             def _apply_building_smoothing(symbol):
-                # REPARATUR: vorher wurde hier StyleEngine.enable_building_smoothing (stale
-                # Klassenattribut) statt des Config-gesteuerten Parameters enable_smoothing
-                # gelesen.
+                # FIX: this previously read StyleEngine.enable_building_smoothing
+                # (a stale class attribute) instead of the config-driven
+                # enable_smoothing parameter.
                 live_smoothing = enable_smoothing
 
                 if not symbol:
                     return
 
                 if live_smoothing is False:
-                    # Wenn Glättung aus ist, entfernen wir bei allen Schichten die Rahmenlinie
+                    # If smoothing is off, remove the outline from all symbol layers
                     for i in range(symbol.symbolLayerCount()):
                         sl = symbol.symbolLayer(i)
                         if hasattr(sl, "setStrokeStyle"):
@@ -2048,7 +2044,7 @@ class StyleEngine:
                 renderer.addCategory(cat)
 
         # ------------------------------------------------------------------
-        # Gemeinsames Finishing & Labels
+        # Shared finalization and labels
         # ------------------------------------------------------------------
         active_renderer = layer.renderer()
         if active_renderer and hasattr(active_renderer, "setUsingSymbolLevels"):
@@ -2058,14 +2054,13 @@ class StyleEngine:
             layer.setFeatureBlendMode(0)
 
         # ==============================================================================
-        # REPARATUR: vorher wurde hier "StyleEngine.enable_building_labels"/
-        # "StyleEngine.enable_building_shadow" gelesen - zwei stale Klassenattribute,
-        # die nur bei offenem Dialog per Checkbox-Klick aktualisiert wurden und bei
-        # einem headless run() nie mit der Config synchronisiert wurden. Zusätzlich
-        # sorgte "or StyleEngine.enable_building_shadow is True" dafür, dass die
-        # Beschriftung immer an ging, sobald der 2.5D-Schatten-Haken aktiv war -
-        # unabhängig vom eigentlichen Beschriftungs-Haken. Jetzt zählt ausschließlich
-        # der Config-gesteuerte Parameter enable_labels.
+        # FIX: this previously read "StyleEngine.enable_building_labels" and
+        # "StyleEngine.enable_building_shadow"—two stale class attributes that
+        # were updated only while the dialog was open and checkbox clicks occurred.
+        # In a headless run(), they were never synchronized from config. In addition,
+        # "or StyleEngine.enable_building_shadow is True" forced labels on whenever
+        # the 2.5D shadow toggle was active, regardless of the labeling toggle.
+        # Only the config-driven enable_labels parameter should matter here.
         # ==============================================================================
         has_name = fields.indexOf("name") >= 0
         if bool(enable_labels) and has_name:
@@ -2112,7 +2107,7 @@ class StyleEngine:
         if not renderer:
             return False
 
-        # Dynamisch ermitteln, auf welcher Spalte QGIS gerade arbeitet
+        # Determine dynamically which field QGIS is currently using
         renderer_field = "fclass"
         if hasattr(renderer, "classAttribute") and renderer.classAttribute():
             renderer_field = renderer.classAttribute().strip().lower()
@@ -2121,7 +2116,7 @@ class StyleEngine:
         elif fields.indexOf("code") >= 0:
             renderer_field = "code"
 
-        # --- DYNAMISCHER, SPALTENFREIER JSON-EINFANG FÜR PUNKTE (POIs) ---
+        # --- Dynamic field-agnostic JSON mapping for points (POIs) ---
         field_mapping = {}
         config_mappings = []
         if config:
@@ -2133,12 +2128,12 @@ class StyleEngine:
                         entry.get("geom", "")).lower() == "point":
                     gui_value = str(entry.get("value", "")).strip().lower()
 
-                    # --- UNZERSTÖRBARER JOKER-ABGLEICH (GEOFABRIK-CODES) ---
+                    # --- Robust fallback matching via GEOFABRIK codes ---
                     target_values = [gui_value]
                     if gui_value in GEOFABRIK_CODE_MAP:
                         target_values.append(GEOFABRIK_CODE_MAP[gui_value])
 
-                    # Wenn der Layer 'code' (Zahlen) nutzt, erzwingen wir die Code-Nummer
+                    # If the layer uses 'code' (numeric values), force the code number
                     if renderer_field == "code":
                         if gui_value in GEOFABRIK_CODE_MAP:
                             target_value = GEOFABRIK_CODE_MAP[gui_value]
@@ -2153,7 +2148,7 @@ class StyleEngine:
                             "type": strat_type, "source": style_str, "legend_label": entry.get("label", ""),
                             "shape": "diamond", "color": "#e31a1c", "size": 4.0
                         }
-                    # Wenn der Layer Klartext spricht (fclass, amenity):
+                    # If the layer uses clear-text values (fclass, amenity):
                     else:
                         for t_val in target_values:
                             style_str = str(entry.get("style", "")).strip()
@@ -2168,10 +2163,10 @@ class StyleEngine:
 
         hat_keine_kategorien = (renderer.type() != "categorizedSymbol" or len(renderer.categories()) == 0)
         # ==============================================================================
-        # --- STRATEGIE MODUS 1 / LEERER LAYER: Kompakter Neuaufbau ---
+        # --- Mode 1 / empty-layer strategy: compact rebuild ---
         # ==============================================================================
-        # REPARATUR: Modus 2 wird hier eiskalt ausgesperrt!
-        # Nur wenn Modus 1 erzwungen wird, bauen wir die Legende radikal neu.
+        # FIX: mode 2 is intentionally excluded here.
+        # Rebuild the legend from scratch only when mode 1 is forced.
         if reines_einzelstyling:
             updated_categories = []
             erstellte_labels = set()
@@ -2218,7 +2213,7 @@ class StyleEngine:
                 updated_categories.append(cat)
                 erstellte_labels.add(label_name)
 
-            # Der graue Joker gilt ab jetzt STRIKT nur noch für das reine Einzelstyling!
+            # The gray fallback now applies strictly only to pure single-symbol styling.
             marker_props = {"name": "circle", "color": "#aaaaaa", "size": "2.0", "outline_color": "#ffffff",
                             "outline_width": "0.3"}
             fallback_layer = QgsSimpleMarkerSymbolLayer.create(marker_props)
@@ -2232,12 +2227,12 @@ class StyleEngine:
             layer.setRenderer(new_renderer)
 
         # ==============================================================================
-        # --- STRATEGIE MODUS 2: Kombiniertes Ergänzen (Präfix-Resistent) ---
+        # --- Mode 2 strategy: combined enhancement with prefix-tolerant matching ---
         # ==============================================================================
         else:
-            # --- DIE UNZERSTÖRBARE RETTUNG FÜR LEERE LAYER IM MODUS 2 ---
+            # --- Fallback rescue for empty layers in mode 2 ---
             if renderer.type() != "categorizedSymbol" or len(renderer.categories()) == 0:
-                # Versuch 1: Das integrierte Basis-Styling triggern
+                # Attempt 1: trigger the built-in base styling
                 basis_erfolgreich = False
                 if hasattr(self, "_execute_base_styling"):
                     try:
@@ -2248,26 +2243,26 @@ class StyleEngine:
                     except Exception:
                         basis_erfolgreich = False
 
-                # Versuch 2: Sensationelles Sicherheitsnetz! Falls das Basis-Styling den Layer ablehnt,
-                # zwingen wir QGIS, die Kategorien direkt aus den echten Tabellenwerten aufzubauen!
+                # Attempt 2: if base styling rejects the layer, force QGIS to build
+                # categories directly from the actual attribute values.
                 if not basis_erfolgreich:
-                    # Wir erzeugen einen frischen Renderer auf der aktiven Spalte
+                    # Create a fresh renderer on the active field
                     default_renderer = QgsCategorizedSymbolRenderer(renderer_field, [])
 
-                    # QGIS anweisen, die Spalte zu scannen und für jeden einzigartigen Wert (school, bank etc.)
-                    # automatisch eine bunte Kategorie mit zufälligen Farben zu erstellen!
+                    # Tell QGIS to scan the field and create a colored category with
+                    # random styling for each unique value (school, bank, etc.).
                     default_renderer.setClassAttribute(renderer_field)
 
-                    # Wir holen uns alle einzigartigen Werte aus der Tabelle
+                    # Retrieve all unique values from the table
                     unique_values = []
                     idx = fields.indexOf(renderer_field)
                     if idx >= 0:
                         unique_values = layer.uniqueValues(idx)
 
-                    # Kategorien im Speicher befüllen
+                    # Populate categories in memory
                     for val in unique_values:
                         if val is not None and str(val).strip():
-                            # Erzeugt ein zufällig gefärbtes Standardsymbol für den Punkt
+                            # Create a default point symbol with a random color
                             sym = QgsMarkerSymbol.createSimple({"name": "circle", "size": "3.0"})
                             cat = QgsRendererCategory(str(val), sym, str(val))
                             default_renderer.addCategory(cat)
@@ -2282,10 +2277,10 @@ class StyleEngine:
                 cat_value = str(category.value()).strip().lower()
                 symbol = category.symbol()
 
-                # --- FLEXIBLER JOKER- & PRÄFIX-ABGLEICH ---
+                # --- Flexible fallback and prefix matching ---
                 matched_cfg = None
 
-                # MINIMAL-FIX MODUS 2: Verhindert, dass allgemeine 'buildings' das Wohngebäude-Symbol stehlen!
+                # Minimal mode-2 fix: prevent generic 'buildings' from taking the residential-building symbol
                 for gui_val, cfg in field_mapping.items():
                     if gui_val == cat_value:
                         matched_cfg = cfg
@@ -2295,7 +2290,7 @@ class StyleEngine:
                         matched_cfg = cfg
                         break
 
-                    # 3. Fall: Präfix-Rettung für Punkte (z.B. "[F] Schule")
+                    # Case 3: prefix-based recovery for points (for example "[F] School")
                     elif gui_val in cat_value:
                         matched_cfg = cfg
                         break
@@ -2339,14 +2334,14 @@ class StyleEngine:
 
                 updated_categories.append(category)
 
-            # --- INTELLIGENTES LEGERDEN-SORTING FÜR MODUS 2 ---
+            # --- Intelligent legend sorting for mode 2 ---
             wunsch_treffer = []
             bunter_rest = []
 
             for cat in updated_categories:
                 cat_value = str(cat.value()).strip().lower()
 
-                # Wir prüfen, ob dieser Eintrag zu unseren GUI-Regeln gehört
+                # Check whether this entry belongs to one of the GUI rules
                 ist_wunsch_icon = False
                 for gui_val in field_mapping.keys():
                     if gui_val in cat_value:
@@ -2358,15 +2353,15 @@ class StyleEngine:
                 else:
                     bunter_rest.append(cat)
 
-            # Die Wunsch-Icons nach oben legen und den Rest unberührt darunter hängen!
+            # Put the preferred icons first and keep the remaining entries below them
             finale_reihenfolge = wunsch_treffer + bunter_rest
 
-            # Den Renderer sauber neu befüllen
+            # Rebuild the renderer in the desired order
             renderer.deleteAllCategories()
             for cat in finale_reihenfolge:
                 renderer.addCategory(cat)
 
-        # --- GEMEINSAMES FINISHING FÜR PUNKTE ---
+        # --- Shared finalization for points ---
         if hasattr(layer, "emitStyleChanged"):
             layer.emitStyleChanged()
 
@@ -2381,22 +2376,22 @@ class StyleEngine:
         return True
 
     def apply_landuse_advanced_features(self, layer, enable_labels=True):
-        """Erweiterte kartografische Behandlung und Beschriftung für Flächen-Layer (Landuse/Water)."""
+        """Advanced cartographic treatment and labeling for area layers (landuse/water)."""
 
         layer_name = layer.name() or "Unbenannt"
         fields = layer.fields()
 
-        # 1. Altes Labeling restlos entfernen, um Geister-Labeling zu unterbinden
+        # 1. Fully remove old labeling to avoid ghost labels
         layer.setLabelsEnabled(False)
         layer.setLabeling(None)
 
-        # 2. Beschriftung auswerten anhand des übergebenen Parameters
-        #    (REPARATUR: vorher wurde hier immer StyleEngine.enable_landuse_labels
-        #    gelesen und der übergebene enable_labels-Parameter komplett ignoriert)
+        # 2. Evaluate labeling based on the passed parameter
+        #    (FIX: this previously always read StyleEngine.enable_landuse_labels
+        #    and ignored the passed enable_labels parameter entirely)
         live_flag = bool(enable_labels)
 
         if live_flag is True:
-            # Intelligente Feldauswahl: 'name' bevorzugen, sonst 'fclass' als Typ-Anzeige nutzen
+            # Smart field selection: prefer 'name', otherwise use 'fclass' as the type label
             target_field = "fclass"
             if fields.indexOf("name") >= 0:
                 target_field = "name"
@@ -2408,16 +2403,16 @@ class StyleEngine:
                 label_settings = QgsPalLayerSettings()
                 label_settings.fieldName = target_field
 
-                # Horizontale Platzierung im Polygon zentriert
+                # Centered horizontal placement inside the polygon
                 label_settings.placement = QgsPalLayerSettings.Horizontal
                 label_settings.centroidWhole = True
-                label_settings.fitInPolygonOnly = True  # Nur zeichnen, wenn es flächenmäßig reinpasst
+                label_settings.fitInPolygonOnly = True  # Draw only when it fits within the area
 
                 text_format = QgsTextFormat()
-                text_format.setFont(QFont("Arial", 7, QFont.StyleItalic))  # Schön kursiv für Naturflächen
+                text_format.setFont(QFont("Arial", 7, QFont.StyleItalic))  # Italic styling for natural areas
                 text_format.setColor(QColor("#454545"))
 
-                # Dezenter Puffer (weißer Rand), damit Schrift auf grünem/blauem Grund lesbar ist
+                # Subtle white buffer to keep text readable on green/blue backgrounds
                 buffer_settings = QgsTextBufferSettings()
                 buffer_settings.setEnabled(True)
                 buffer_settings.setSize(0.6)

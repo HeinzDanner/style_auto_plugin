@@ -2,32 +2,32 @@
 
 [![Tests](https://github.com/HeinzDanner/style_auto_plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/HeinzDanner/style_auto_plugin/actions/workflows/tests.yml)
 
-*A QGIS Python plugin that automatically applies categorized styling (roads, buildings, land use, POIs) to the active vector layer, driven by a JSON rule configuration and a PyQt settings dialog. See below for details (German).*
+*A QGIS Python plugin that automatically applies categorized styling for roads, buildings, land use, and POIs to the active vector layer, driven by a JSON rule configuration and a PyQt settings dialog.*
 
-Style Auto Plugin ist ein QGIS-Python-Plugin, das automatisch einen kategorisierten Stil auf den aktuell aktiven Layer anwendet.
+Style Auto Plugin is a QGIS Python plugin that automatically applies categorized styling to the currently active layer.
 
-Die Styling-Regeln werden hochperformant aus der Konfiguration geladen. Dabei werden Regelsätze nach Layername, Geometrietyp, Feldname und Priorität ausgewählt. Für nicht explizit konfigurierte Werte kann optional ein Fallback-Stil verwendet werden.
+Styling rules are loaded efficiently from the configuration. Rulesets are selected by layer name, geometry type, field name, and priority. For values that are not explicitly configured, an optional fallback style can be applied.
 
-## Funktionen
+## Features
 
-- Automatische Auswahl eines passenden Layer-Regelsatzes.
-- Auswahl des passenden Feld-Regelsatzes nach Priorität.
-- Drei auswählbare Global Styling Modi (Modus 0, 1 und 2).
-- Sechs zuschaltbare kartografische Optionen über die GUI.
-- Kategorisierte Symbolisierung auf Basis eines Feldes.
-- Duplikatssicherer automatischer Symbol-Import für Tester.
-- Schneller RAM-Cache zur Vermeidung von Festplatten-Scans.
-- Optionaler Fallback-Stil für nicht konfigurierte Werte.
-- Robuster, stummgeschalteter Kern ohne Log-Müllberge.
+- Automatic selection of the most suitable layer ruleset.
+- Priority-based selection of the appropriate field ruleset.
+- Three global styling modes (Mode 0, 1, and 2).
+- Six optional cartographic settings exposed through the GUI.
+- Field-based categorized symbology.
+- Duplicate-safe automatic symbol import for testing.
+- Fast in-memory caching to avoid repeated disk scans.
+- Optional fallback styling for unconfigured values.
+- A robust, quiet core without excessive log output.
 
-## Voraussetzungen
+## Requirements
 
-- QGIS 3.28 oder neuer
-- Eine gültige Konfigurationsdatei im Plugin-Verzeichnis
+- QGIS 3.28 or newer
+- A valid configuration file in the plugin directory
 
-## Plugin-Struktur
+## Plugin Structure
 
-Das Plugin folgt der QGIS-Python-Plugin-Struktur mitsamt dem erweiterten `styles`-Ressourcenordner.
+The plugin follows the standard QGIS Python plugin layout, including the extended `styles` resource directory.
 
 ```text
 style_auto_plugin/
@@ -49,71 +49,71 @@ style_auto_plugin/
 
 ## Installation
 
-### Lokale Installation
+### Local Installation
 
-1. Den Ordner `style_auto_plugin` in das lokale QGIS-Plugin-Verzeichnis kopieren.
-2. QGIS neu starten.
-3. Das Plugin im Plugin-Manager aktivieren.
+1. Copy the `style_auto_plugin` folder into your local QGIS plugin directory.
+2. Restart QGIS.
+3. Enable the plugin in the Plugin Manager.
 
-Typisches Plugin-Verzeichnis unter Windows:
+Typical plugin directory on Windows:
 
 ```text
-C:\Users\<Benutzername>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins
+C:\Users\<Username>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins
 ```
 
-### Installation aus ZIP
+### Installation from ZIP
 
-1. Den vollständigen Ordner `style_auto_plugin` als ZIP-Datei packen.
-2. In QGIS `Plugins` -> `Manage and Install Plugins...` öffnen.
-3. `Install from ZIP` auswählen.
-4. Die ZIP-Datei auswählen und installieren.
+1. Package the complete `style_auto_plugin` folder as a ZIP archive.
+2. In QGIS, open `Plugins` -> `Manage and Install Plugins...`.
+3. Choose `Install from ZIP`.
+4. Select the ZIP file and install it.
 
-## Konfiguration
+## Configuration
 
-Die Regeln werden standardmäßig aus der Konfigurationsdatei geladen. Das Einstellungsfenster synchronisiert Änderungen der Tester automatisch mit der lokalen JSON-Datei auf der Festplatte des jeweiligen Benutzers.
+Rules are loaded from the configuration file by default. The settings window automatically synchronizes tester changes with the local JSON file on each user's machine.
 
 ## Tests
 
-Im Ordner `tests/` liegt eine pytest-Suite:
+The `tests/` directory contains a pytest suite:
 
-- `test_style_config.py` prüft rein die Parsing-/Coercion-Logik von `style_config.py` und läuft mit jedem normalen Python-Interpreter, sofern `pytest` installiert ist. Diese Tests laufen auch automatisiert in der GitHub-Actions-CI (siehe Badge oben).
-- `test_style_engine.py` und `test_style_auto_plugin.py` prüfen die eigentliche Styling-Logik funktional mit echten (In-Memory-)QGIS-Layern und benötigen daher den QGIS-eigenen Python-Interpreter (`qgis.core`). Diese laufen lokal, nicht in der CI (kein QGIS-Runtime-Image verfügbar).
+- `test_style_config.py` validates only the parsing and coercion logic in `style_config.py` and can run with any regular Python interpreter, as long as `pytest` is installed. These tests also run in GitHub Actions CI (see the badge above).
+- `test_style_engine.py` and `test_style_auto_plugin.py` verify the actual styling logic functionally using real in-memory QGIS layers and therefore require the QGIS Python interpreter (`qgis.core`). They are intended for local execution, not CI, because no QGIS runtime image is available there.
 
-Ausführen unter Windows z.B. mit:
+Run on Windows, for example, with:
 
 ```text
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pip install pytest
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
 ```
 
-## Verwendung
+## Usage
 
-1. Einen passenden Vektorlayer in QGIS laden.
-2. Den gewünschten Layer aktiv in der Legende auswählen.
-3. Das Plugin über die Benutzeroberfläche starten.
-4. Den gewünschten globalen Styling-Modus festlegen.
-5. Gewünschte kartografische Optionen (Schatten, Glättung etc.) anhaken.
-6. Das Fenster schließen – der Stil wird lautlos und sofort auf das konfigurierte Feld angewendet.
+1. Load a suitable vector layer in QGIS.
+2. Select the desired layer in the legend.
+3. Start the plugin from the user interface.
+4. Choose the desired global styling mode.
+5. Enable any cartographic options you want to use (shadow, smoothing, and so on).
+6. Close the window—the style is applied silently and immediately to the configured field.
 
-## Verhalten bei fehlenden Werten
+## Behavior for Missing Values
 
-Wenn im Layer Werte vorkommen, für die keine explizite Regel existiert, gibt es zwei mögliche Fälle:
+If the layer contains values for which no explicit rule exists, two cases are possible:
 
-- Ist ein Fallback-Stil definiert, wird dieser Stil verwendet.
-- Ist kein Fallback-Stil definiert, werden diese Werte im Modus 1 über einen universellen Joker-Eintrag abgefangen.
+- If a fallback style is defined, that style is used.
+- If no fallback style is defined, Mode 1 catches those values with a universal fallback entry.
 
-## Aktueller Stand
+## Current Status
 
-Dieses Plugin ist aktuell ein funktionstüchtiger MVP mit Fokus auf automatisierte, konfigurierbare und benutzergesteuerte Symbolisierung.
+This plugin is currently a working MVP focused on automated, configurable, and user-driven symbology.
 
-## Bekannte Einschränkungen
+## Known Limitations
 
-- Der Symbolaufbau ist auf die vorhandene Implementierung zugeschnitten.
+- Symbol construction is tailored to the current implementation.
 
-## Geplanter Ausbau
+## Planned Expansion
 
-- Weitere vordefinierte Beispielkonfigurationen.
+- Additional predefined example configurations.
 
-## Lizenz
+## License
 
-Dieses Plugin steht unter der GNU General Public License v2.0 oder neuer (GPL-2.0-or-later). Die vollständige Lizenz steht in der Datei `LICENSE`.
+This plugin is licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later). The full license text is available in the `LICENSE` file.

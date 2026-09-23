@@ -10,24 +10,24 @@ class StyleAutoPluginDialog(QDialog):
     def __init__(self, parent=None, active_config=None):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Style Auto Plugin - Configuration"))
-        self.setMinimumWidth(550)  # Schöne, schmalere Breite, da eine Spalte fehlt!
+        self.setMinimumWidth(550)  # Slightly narrower width because one column was removed.
         self.setMinimumHeight(550)
 
         self.config = active_config if active_config is not None else {}
         self.style_engine = style_engine
-        self.style_engine.config = self.config  # Deine geladene Konfiguration übergeben
+        self.style_engine.config = self.config  # Pass through the loaded configuration.
 
-        # Wichtig: Die Bools einmalig mit der echten Config synchronisieren!
+        # Important: synchronize the booleans once with the real config.
         self.style_engine.sync_runtime_bools_from_config(self.config)
 
         self.main_layout = QVBoxLayout(self)
 
         # ==============================================================================
-        # GLOBALER HAUPTPUNKT: GLOBALER STYLING-MODUS (Ganz oben für alle Layer!)
+        # MAIN SECTION: global styling mode (at the top for all layers)
         # ==============================================================================
         global_mode_layout = QHBoxLayout()
         lbl_mode = QLabel(self.tr("Global Styling Mode (All Layers):"), self)
-        lbl_mode.setStyleSheet("font-weight: bold; font-size: 11px;")  # Schön hervorheben
+        lbl_mode.setStyleSheet("font-weight: bold; font-size: 11px;")  # Make it stand out visually.
         global_mode_layout.addWidget(lbl_mode)
 
         self.mode_combo = QComboBox(self)
@@ -37,7 +37,7 @@ class StyleAutoPluginDialog(QDialog):
             self.tr("Mode 2: Combined Styling (Base + GUI List)")
         ])
 
-        # --- ENTFLECHTER & FIX: MODUS-EINFANG BEIM ÖFFNEN ---
+        # --- Fix: capture the current mode when opening the dialog ---
         if isinstance(self.config, dict):
             aktueller_modus = self.config.get("road_style_mode", 2)
         else:
@@ -55,14 +55,14 @@ class StyleAutoPluginDialog(QDialog):
         englischer_text = "Cartographic Options (active in Mode 1 and Mode 2)"
         self.group_effects = QGroupBox(self.tr(englischer_text), self)
 
-        # Sicherheitsnetz: Übersetzungs-Fallback für die Tester
+        # Safety net: translation fallback for testers
         if self.group_effects.title() == englischer_text:
             self.group_effects.setTitle("Kartografische Optionen (aktiv in Modus 1 und Modus 2)")
 
         effects_layout = QVBoxLayout(self.group_effects)
 
         # ==============================================================================
-        # Schalter 1 (Ehemals Straßen-Basis): Umbenannt und optisch nach unten verschoben!
+        # Toggle 1 (formerly road base): renamed and moved lower in the layout
         # ==============================================================================
         self.cb_road_base = QCheckBox(self.tr("Straßen-Hierarchie & dicke Liniendesigns aktivieren"), self)
         self.cb_road_base.setChecked(self.config.get("enable_advanced_road_features", True))
@@ -70,7 +70,7 @@ class StyleAutoPluginDialog(QDialog):
         effects_layout.addWidget(self.cb_road_base)
 
         # ==============================================================================
-        # Schalter 2: Straßennamen (Dichte-optimiert)
+        # Toggle 2: road names (density-optimized)
         # ==============================================================================
         self.cb_road_labels = QCheckBox(self.tr("Show Road Names (Density-Optimized)"), self)
         self.cb_road_labels.setChecked(self.config.get("enable_road_labels", True))
@@ -78,7 +78,7 @@ class StyleAutoPluginDialog(QDialog):
         effects_layout.addWidget(self.cb_road_labels)
 
         # ==============================================================================
-        # Schalter 3: Gebäudekanten-Glättung
+        # Toggle 3: building edge smoothing
         # ==============================================================================
         self.cb_building_smoothing = QCheckBox(self.tr("Enable Building Edge Smoothing"), self)
         self.cb_building_smoothing.setChecked(self.config.get("enable_building_edge_smoothing", True))
@@ -86,7 +86,7 @@ class StyleAutoPluginDialog(QDialog):
         effects_layout.addWidget(self.cb_building_smoothing)
 
         # ==============================================================================
-        # Schalter 4: 2.5D Gebäude-Schlagschatten
+        # Toggle 4: 2.5D building drop shadow
         # ==============================================================================
         self.cb_building_shadow = QCheckBox(self.tr("Enable 2.5D Building Drop Shadows"), self)
         self.cb_building_shadow.setChecked(self.config.get("enable_building_drop_shadow", True))
@@ -94,7 +94,7 @@ class StyleAutoPluginDialog(QDialog):
         effects_layout.addWidget(self.cb_building_shadow)
 
         # ==============================================================================
-        # Schalter 5: Gebäudebeschriftung (Hausnummern)
+        # Toggle 5: building labels (house numbers)
         # ==============================================================================
         self.cb_building_labels = QCheckBox(self.tr("Show Building Labels (House Numbers/Names)"), self)
         self.cb_building_labels.setChecked(self.config.get("enable_building_labels", True))
@@ -102,31 +102,31 @@ class StyleAutoPluginDialog(QDialog):
         effects_layout.addWidget(self.cb_building_labels)
 
         # ==============================================================================
-        # Schalter 6: Flächenbeschriftung (Wald/Wasser)
+        # Toggle 6: area labels (forest/water)
         # ==============================================================================
         self.cb_landuse_labels = QCheckBox(self.tr("Show Landuse Labels (Forest/Water Spaced)"), self)
         self.cb_landuse_labels.setChecked(self.config.get("enable_landuse_labels", True))
         self.cb_landuse_labels.stateChanged.connect(self.auto_save_settings)
         effects_layout.addWidget(self.cb_landuse_labels)
 
-        # Widget zur Hauptansicht hinzufügen
+        # Add the widget group to the main view
         self.main_layout.addWidget(self.group_effects)
 
         # ==============================================================================
-        # --- DIE VERSTECKTEN ENGINE-SÄUBERUNGEN: Immer auf True zwingen im Hintergrund ---
+        # --- Hidden engine housekeeping: force these to True in the background ---
         # ==============================================================================
-        # Gebäude-Basis im RAM deklarieren, auf True setzen und komplett verstecken
+        # Declare building base in memory, set it to True, and hide it completely
         self.cb_building_base = QCheckBox(self)
         self.cb_building_base.setChecked(True)
         self.cb_building_base.hide()
 
-        # Punkte-Basis im RAM deklarieren, auf True setzen und komplett verstecken
+        # Declare point base in memory, set it to True, and hide it completely
         self.cb_point_base = QCheckBox(self)
         self.cb_point_base.setChecked(True)
         self.cb_point_base.hide()
         # ==============================================================================
 
-        # --- GRUPPE 3: MODULARES EINZELSTYLING (SPALTENFREI) ---
+        # --- Group 3: modular single-symbol styling (without extra columns) ---
         self.group_single = QGroupBox(self.tr("Custom Single Symbol Mappings"), self)
         single_main_layout = QVBoxLayout(self.group_single)
 
@@ -143,7 +143,7 @@ class StyleAutoPluginDialog(QDialog):
         control_layout.addStretch()
         single_main_layout.addLayout(control_layout)
 
-        # --- PERFEKT AUSGERICHTETER SPALTEN-HEADER ---
+        # --- Precisely aligned column header ---
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(0, 2, 0, 2)
 
@@ -180,13 +180,13 @@ class StyleAutoPluginDialog(QDialog):
         self.radio_group = QButtonGroup(self)
 
         # ==============================================================================
-        # Standardvorgaben für Custom Single Symbol Mappings vorbereiten/ergänzen
+        # Prepare and extend default values for custom single-symbol mappings
         # ==============================================================================
         import os
         dialog_dir = os.path.dirname(os.path.abspath(__file__))
         xml_test_pfad = os.path.join(dialog_dir, "styles", "style_symbols.xml")
 
-        # Unsere 5 festen Standardvorgaben, die wir erzwingen wollen
+        # The five fixed defaults that should always be present
         hardcoded_defaults = [
             {"active": True, "geom": "Line", "value": "motorway", "style": "autobahn", "label": "Autobahn"},
             {"active": True, "geom": "Line", "value": "tertiary", "style": "nebenstrasse", "label": "Nebenstraße"},
@@ -196,32 +196,32 @@ class StyleAutoPluginDialog(QDialog):
             {"active": True, "geom": "Point", "value": "hospital", "style": "hospital.svg", "label": "Krankenhaus"}
         ]
 
-        # Den aktuellen Stand aus der config.json holen
+        # Load the current state from config.json
         initial_entries = self.config.get("custom_mappings", [])
 
-        # NUR WENN DIE TEST-XML EXISTIERT, ERGÄNZEN WIR FEHLENDE ZEILEN:
+        # Only add missing rows if the test XML exists:
         if os.path.exists(xml_test_pfad):
             if not isinstance(initial_entries, list) or len(initial_entries) == 0:
                 initial_entries = hardcoded_defaults
             else:
-                # Wir holen uns die OSM-Werte, die AKTUELL SCHON in der Config stehen
+                # Collect the OSM values that are already present in the config
                 aktuell_vorhandene_values = []
                 for m in initial_entries:
                     if isinstance(m, dict) and "value" in m:
-                        # Wir bereinigen den Text radikal von Leerzeichen und Klein-/Großschreibung
+                        # Normalize aggressively for whitespace and letter case
                         aktuell_vorhandene_values.append(str(m["value"]).strip().lower())
 
-                # Jetzt loopen wir durch die 5 Defaults und fügen NUR hinzu, was wirklich fehlt!
+                # Now loop through the five defaults and add only what is truly missing
                 for standard_zeile in hardcoded_defaults:
                     such_value = str(standard_zeile["value"]).strip().lower()
 
-                    # Wenn der OSM-Wert (z.B. 'tertiary') noch NICHT in der Liste ist:
+                    # If the OSM value (for example 'tertiary') is not yet in the list:
                     if such_value not in aktuell_vorhandene_values:
                         initial_entries.append(standard_zeile)
 
             self.config["custom_mappings"] = initial_entries
         else:
-            # FALLBACK: Wenn keine XML da ist, gilt stur der letzte User-Stand
+            # Fallback: if no XML is available, keep the last user state as-is
             if not isinstance(initial_entries, list) or len(initial_entries) == 0:
                 initial_entries = hardcoded_defaults
 
@@ -235,7 +235,7 @@ class StyleAutoPluginDialog(QDialog):
         self.cb_point_base.setChecked(True)
         self.cb_point_base.hide()
 
-        # Einmal initial sichern, damit die Struktur im Speicher steht
+        # Save once initially so the structure exists in memory
         self.auto_save_settings()
 
     def create_row_widget(self, data=None):
@@ -333,18 +333,18 @@ class StyleAutoPluginDialog(QDialog):
             self.style_engine.enable_landuse_labels = self.cb_landuse_labels.isChecked()
 
             # ==============================================================================
-            # --- STRASSENNAMEN ABSICHERUNG AN DIE KLASSE (Großgeschrieben!) ---
+            # --- Mirror the road-name flag to the class-level state ---
             # ==============================================================================
             from .style_engine import StyleEngine
             StyleEngine.enable_labels = self.cb_road_labels.isChecked()
-            # Deine restlichen funktionierenden Gebäude/Landuse-Klassen-Absicherungen...
+            # Keep the remaining working building/landuse class-level guards in sync.
             StyleEngine.enable_landuse_labels = self.cb_landuse_labels.isChecked()
             StyleEngine.enable_building_labels = self.cb_building_labels.isChecked()
             StyleEngine.enable_building_smoothing = self.cb_building_smoothing.isChecked()
             StyleEngine.enable_building_shadow = self.cb_building_shadow.isChecked()
             StyleEngine.enable_advanced_road_features = self.cb_road_base.isChecked()
 
-        # 2. Werte im Config-Dict für QGIS sichern
+        # 2. Persist values into the config dict for QGIS
         self.config["road_style_mode"] = self.mode_combo.currentIndex()
         self.config["enable_advanced_road_features"] = self.cb_road_base.isChecked()
         self.config["enable_advanced_building_features"] = self.cb_building_base.isChecked()
@@ -355,7 +355,7 @@ class StyleAutoPluginDialog(QDialog):
         self.config["enable_building_labels"] = self.cb_building_labels.isChecked()
         self.config["enable_landuse_labels"] = self.cb_landuse_labels.isChecked()
 
-        # 3. Mappings aus der GUI-Tabelle auslesen
+        # 3. Read mappings from the GUI table
         extracted_mappings = []
         for row in self.mapping_rows:
             extracted_mappings.append({
@@ -368,7 +368,7 @@ class StyleAutoPluginDialog(QDialog):
         self.config["custom_mappings"] = extracted_mappings
 
     def tr(self, message):
-        # Wir nutzen die RAM-Weiche direkt hier im Fenster, damit keine Datei blockieren kann
+        # Use the in-memory switch directly in this dialog so no file access can block it.
         de_dict = {
             "Style Auto Plugin - Configuration": "Style Auto Plugin - Konfiguration",
             "Global Styling Mode (All Layers):": "Globaler Styling-Modus (Alle Layer):",

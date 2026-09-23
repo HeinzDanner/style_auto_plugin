@@ -202,7 +202,7 @@ def _parse_match_config(data):
     value_hints = _as_list(_get_first(data, "value_hints", default=[]))
     name_hints = _as_list(_get_first(data, "name_hints", default=[]))
 
-    # legacy fallback: if only layer_name_pattern exists, keep it also as a weak name hint
+    # Legacy fallback: if only layer_name_pattern exists, also keep it as a weak name hint
     if layer_name_pattern and not name_hints:
         name_hints = [layer_name_pattern]
 
@@ -294,7 +294,7 @@ def _parse_plugin_config(data):
             _get_first(data, "allownamemismatchfallback", "allow_name_mismatch_fallback", default=True),
             True
         ),
-        compactlegend=_as_bool(                       # NEU
+        compactlegend=_as_bool(                       # NEW
             _get_first(
                 data,"compactlegend","compact_legend",default=True,
             ),
@@ -318,7 +318,7 @@ def _parse_plugin_config(data):
 # ----------------------------------------------------------------------
 
 def get_config():
-    import json # REPARATUR: Steht jetzt sicher hier drin für alle nachfolgenden Zeilen!
+    import json # FIX: Defined here explicitly so it is always available below.
     config_file = _config_path()
 
     if not os.path.exists(config_file):

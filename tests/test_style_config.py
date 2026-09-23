@@ -1,9 +1,9 @@
-# Style Auto Plugin - Tests für style_config.py
+# Style Auto Plugin - Tests for style_config.py
 #
-# Diese Tests prüfen ausschließlich die Parsing-/Coercion-Logik der Konfiguration
-# und benötigen kein qgis.core. Sie laufen daher auch mit einem normalen
-# Python-Interpreter (z.B. `python -m pytest tests/test_style_config.py`),
-# sofern pytest installiert ist.
+# These tests cover only the configuration parsing/coercion logic and do not
+# require qgis.core. They therefore also run with a normal Python interpreter
+# (for example `python -m pytest tests/test_style_config.py`) as long as pytest
+# is installed.
 import json
 import os
 import sys
@@ -85,7 +85,7 @@ def test_parse_line_style_def_defaults_and_overrides():
     assert custom_style.width == 1.2
     assert custom_style.penstyle == "dash"
 
-    # Kein dict -> Default-Objekt statt Exception
+    # Non-dict input -> return the default object instead of raising an exception
     assert sc._parse_line_style_def(None) == sc.LineStyleDef()
 
 
@@ -105,15 +105,15 @@ def test_parse_value_rule():
 def test_parse_field_ruleset_legacy_keys_and_fallback():
     data = {
         "enabled": True,
-        "fieldname": "highway",  # legacy Schlüssel statt field_name
+        "fieldname": "highway",  # Legacy key instead of field_name
         "priority": "5",
         "rules": [{"value": "primary", "label": "Primär"}, "not-a-dict"],
-        "fallback_style": {"color": "#abcdef"},  # legacy Schlüssel statt fallbackstyle
+        "fallback_style": {"color": "#abcdef"},  # Legacy key instead of fallbackstyle
     }
     ruleset = sc._parse_field_ruleset(data)
     assert ruleset.field_name == "highway"
     assert ruleset.priority == 5
-    assert len(ruleset.rules) == 1  # Nicht-Dict-Eintrag wird verworfen
+    assert len(ruleset.rules) == 1  # Non-dict entry is discarded
     assert ruleset.fallbackstyle.color == "#abcdef"
 
 
@@ -121,7 +121,7 @@ def test_parse_match_config_legacy_name_hint_fallback():
     data = {"layer_name_pattern": "roads_*"}
     match = sc._parse_match_config(data)
     assert match.layer_name_pattern == "roads_*"
-    # Ohne explizite name_hints wird das Legacy-Pattern als schwacher Hinweis übernommen
+    # Without explicit name_hints, the legacy pattern is kept as a weak hint
     assert match.name_hints == ["roads_*"]
 
 
@@ -174,7 +174,7 @@ def test_parse_plugin_config_non_dict_returns_default():
 
 
 # ----------------------------------------------------------------------
-# get_config() - Datei-I/O
+# get_config() - file I/O
 # ----------------------------------------------------------------------
 
 def test_get_config_missing_file(tmp_path, monkeypatch):
