@@ -8,6 +8,12 @@ Style Auto Plugin is a QGIS Python plugin that automatically applies categorized
 
 Styling rules are loaded efficiently from the configuration. Rulesets are selected by layer name, geometry type, field name, and priority. For values that are not explicitly configured, an optional fallback style can be applied.
 
+## Project Context
+
+This was my first Python project and my first hands-on work with a GIS API (QGIS/PyQt). My background is Java/JVM, so the goal here was to get comfortable with a new language and ecosystem while still applying the engineering habits I use professionally: writing tests against real objects instead of trusting manual clicking, tracking down root causes instead of patching symptoms, and keeping a clean, reviewable commit history.
+
+Several rounds of real-world testing surfaced concrete bugs (checkboxes silently not wired to the logic they were supposed to control, wrong QGIS API method names, config values read in one place but never in another). Each one was fixed with a regression test added alongside it — the `tests/` suite grew out of that process rather than being planned upfront.
+
 ## Features
 
 - Automatic selection of the most suitable layer ruleset.
@@ -113,6 +119,15 @@ This plugin is currently a working MVP focused on automated, configurable, and u
 ## Planned Expansion
 
 - Additional predefined example configurations.
+
+## Lessons Learned / What I'd Do Differently
+
+Coming from Java, a few things stand out in hindsight that I would design differently on a from-scratch rewrite:
+
+- **State duplication:** boolean settings (e.g. "enable building labels") ended up tracked in three places at once — a class attribute on `StyleEngine`, an instance attribute, and a key in the JSON config dict — synced by ad-hoc helper methods. This caused several of the bugs found during testing (a checkbox reacting to the wrong setting, a toggle only working while the settings dialog was open). In Java I would have modeled this as a single immutable config object passed explicitly through the call chain from the start; here it was retrofitted after the fact via a shared `_get_attr()` accessor instead of eliminating the duplication outright.
+- **Module size:** `style_engine.py` grew to roughly 2,400 lines covering roads, buildings, land use, and points in one file/class. A cleaner design would split this into one strategy per geometry/feature type (roads, buildings, land use, points), similar to a Strategy or Visitor pattern in Java, instead of one large method with mode/geometry branching.
+- **Defensive "kill switch" guards:** several features had multiple redundant early-return guards added independently over time (sometimes three separate places blocking the same code path for the same condition). Consolidating a boolean's effect into exactly one place would have prevented the "toggle off breaks something else entirely" class of bugs I ran into.
+- **Testing came later than it should have:** the pytest suite (54 tests, using real in-memory QGIS layers) was added after the initial feature set existed, once bugs from manual testing started piling up. Writing tests alongside the first working version — even a handful — would have caught the API-name bug (`setJoinStyle`/`setCapStyle` don't exist on `QgsSimpleLineSymbolLayer`; the real methods are `setPenJoinStyle`/`setPenCapStyle`) immediately instead of after real-world use.
 
 ## License
 
