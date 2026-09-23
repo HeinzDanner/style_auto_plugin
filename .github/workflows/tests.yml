@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  config-tests:
+    name: Pure-Python config tests (no QGIS required)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run style_config.py tests
+        run: python -m pytest tests/test_style_config.py -v
+
+  # style_engine.py and style_auto_plugin.py require qgis.core (real QGIS
+  # layers/renderers) and are therefore run locally with the QGIS-bundled
+  # Python interpreter, e.g.:
+  #   "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
+  # See README.md "Tests" section for details.

@@ -1,5 +1,9 @@
 # Style Auto Plugin
 
+[![Tests](https://github.com/HeinzDanner/style_auto_plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/HeinzDanner/style_auto_plugin/actions/workflows/tests.yml)
+
+*A QGIS Python plugin that automatically applies categorized styling (roads, buildings, land use, POIs) to the active vector layer, driven by a JSON rule configuration and a PyQt settings dialog. See below for details (German).*
+
 Style Auto Plugin ist ein QGIS-Python-Plugin, das automatisch einen kategorisierten Stil auf den aktuell aktiven Layer anwendet.
 
 Die Styling-Regeln werden hochperformant aus der Konfiguration geladen. Dabei werden Regelsätze nach Layername, Geometrietyp, Feldname und Priorität ausgewählt. Für nicht explizit konfigurierte Werte kann optional ein Fallback-Stil verwendet werden.
@@ -72,8 +76,8 @@ Die Regeln werden standardmäßig aus der Konfigurationsdatei geladen. Das Einst
 
 Im Ordner `tests/` liegt eine pytest-Suite:
 
-- `test_style_config.py` prüft rein die Parsing-/Coercion-Logik von `style_config.py` und läuft mit jedem normalen Python-Interpreter, sofern `pytest` installiert ist.
-- `test_style_engine.py` prüft `style_engine.py` funktional mit echten (In-Memory-)QGIS-Layern und benötigt daher den QGIS-eigenen Python-Interpreter (`qgis.core`).
+- `test_style_config.py` prüft rein die Parsing-/Coercion-Logik von `style_config.py` und läuft mit jedem normalen Python-Interpreter, sofern `pytest` installiert ist. Diese Tests laufen auch automatisiert in der GitHub-Actions-CI (siehe Badge oben).
+- `test_style_engine.py` und `test_style_auto_plugin.py` prüfen die eigentliche Styling-Logik funktional mit echten (In-Memory-)QGIS-Layern und benötigen daher den QGIS-eigenen Python-Interpreter (`qgis.core`). Diese laufen lokal, nicht in der CI (kein QGIS-Runtime-Image verfügbar).
 
 Ausführen unter Windows z.B. mit:
 
