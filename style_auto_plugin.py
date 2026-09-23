@@ -241,6 +241,13 @@ class StyleAutoPlugin:
         config.enable_building_edge_smoothing = True
         config.enable_building_drop_shadow = True
         config.enable_landuse_labels = True
+        # REPARATUR: Diese drei Basis-Schalter (Straßen-/Gebäude-/Punkt-Hierarchie) wurden
+        # vom Dialog zwar in die JSON geschrieben (siehe open_config()), aber hier nie
+        # wieder ausgelesen. Dadurch griff in style_engine.py immer der getattr()-Default
+        # "True", unabhängig vom tatsächlichen Haken-Zustand in der GUI.
+        config.enable_advanced_road_features = True
+        config.enable_advanced_building_features = True
+        config.enable_advanced_point_features = True
 
         if os.path.exists(json_path):
             try:
@@ -259,6 +266,12 @@ class StyleAutoPlugin:
                             config.enable_building_drop_shadow = bool(file_data["enable_building_drop_shadow"])
                         if "enable_landuse_labels" in file_data:
                             config.enable_landuse_labels = bool(file_data["enable_landuse_labels"])
+                        if "enable_advanced_road_features" in file_data:
+                            config.enable_advanced_road_features = bool(file_data["enable_advanced_road_features"])
+                        if "enable_advanced_building_features" in file_data:
+                            config.enable_advanced_building_features = bool(file_data["enable_advanced_building_features"])
+                        if "enable_advanced_point_features" in file_data:
+                            config.enable_advanced_point_features = bool(file_data["enable_advanced_point_features"])
 
                         if "road_style_mode" in file_data:
                             setattr(config, "road_style_mode", int(file_data["road_style_mode"]))
