@@ -5,8 +5,8 @@
     "enable_advanced_road_features": true,
     "enable_advanced_building_features": true,
     "enable_building_edge_smoothing": true,
-    "enable_building_drop_shadow": true,
-    "enable_building_labels": true,
+    "enable_building_drop_shadow": false,
+    "enable_building_labels": false,
     "enable_landuse_labels": true,
     "enable_advanced_point_features": true,
     "style_profiles": [
@@ -1410,5 +1410,5 @@
             "label": "Krankenhaus"
         }
     ],
-    "road_style_mode": 0
+    "road_style_mode": 2
 }

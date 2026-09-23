@@ -193,6 +193,47 @@ def test_mode1_polygon_building_layer_disabled_reports_failure(engine, symbols_l
 
 
 # ----------------------------------------------------------------------
+# apply_best_style: Modus 1 - Gebäudebeschriftung folgt nur ihrem eigenen
+# Haken (enable_building_labels), nicht dem 2.5D-Schatten-Haken.
+#
+# Vorher wurde in apply_building_symbol_mapping() geprüft:
+#   "(StyleEngine.enable_building_labels is True and has_name)
+#    or StyleEngine.enable_building_shadow is True"
+# Das globale Klassenattribut StyleEngine.enable_building_shadow wurde
+# aber nur aktualisiert, wenn der Dialog offen war und der Nutzer den
+# Schatten-Haken klickte - bei einem headless run() blieb es auf seinem
+# zuletzt gesetzten (u.U. veralteten) Stand. Zusätzlich zwang die
+# "or"-Verknüpfung die Beschriftung immer an, sobald der Schatten-Haken
+# aktiv war, unabhängig vom eigentlichen Beschriftungs-Haken.
+# ----------------------------------------------------------------------
+
+def test_mode1_building_labels_follow_only_their_own_toggle(engine, symbols_loaded):
+    layer_labels_on = make_polygon_layer()
+    add_feature(layer_labels_on, ["apartments", None, None, None, "Haus 1"])
+    config_on = _simple_config(
+        road_style_mode=1, enable_advanced_building_features=True,
+        enable_building_labels=True, enable_building_drop_shadow=False,
+    )
+
+    result_on = engine.apply_best_style(layer_labels_on, config_on)
+
+    assert result_on["success"] is True
+    assert layer_labels_on.labelsEnabled() is True
+
+    layer_labels_off = make_polygon_layer()
+    add_feature(layer_labels_off, ["apartments", None, None, None, "Haus 1"])
+    config_off = _simple_config(
+        road_style_mode=1, enable_advanced_building_features=True,
+        enable_building_labels=False, enable_building_drop_shadow=True,
+    )
+
+    result_off = engine.apply_best_style(layer_labels_off, config_off)
+
+    assert result_off["success"] is True
+    assert layer_labels_off.labelsEnabled() is False
+
+
+# ----------------------------------------------------------------------
 # apply_best_style: Modus 1 - Landuse-Polygone (Regressionstest für den Bugfix)
 #
 # Vorher rief der Code eine nicht existierende Methode namens

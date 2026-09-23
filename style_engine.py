@@ -1751,8 +1751,12 @@ class StyleEngine:
                         sl.setStrokeStyle(Qt.SolidLine)
 
         def _apply_building_shadow(symbol):
-            # Wir zwingen die Hilfsfunktion, auf die Klasse zu hören!
-            if not symbol or StyleEngine.enable_building_shadow is False:
+            # REPARATUR: vorher wurde hier immer das globale Klassenattribut
+            # StyleEngine.enable_building_shadow gelesen (stale, nur vom zuletzt
+            # geöffneten Dialog gesetzt). Jetzt zählt der aus der Config kommende
+            # Funktionsparameter enable_shadow, damit ein headless run() konsistent
+            # dieselbe Config-gesteuerte Entscheidung trifft.
+            if not symbol or not enable_shadow:
                 return
 
             # Die alte 'if not enable_shadow'-Abfrage wurde hier gelöscht!
@@ -1779,7 +1783,9 @@ class StyleEngine:
             # Richtiger Qt-Import direkt für die innere Funktion bereitstellen
             from qgis.PyQt.QtCore import QPointF
 
-            live_shadow = getattr(StyleEngine, "enable_building_shadow", True)
+            # REPARATUR: vorher stand hier "getattr(StyleEngine, 'enable_building_shadow', True)"
+            # (stale Klassenattribut statt des Config-gesteuerten Parameters enable_shadow).
+            live_shadow = bool(enable_shadow)
 
             if live_shadow is True:
                 try:
@@ -1904,9 +1910,11 @@ class StyleEngine:
                 new_symbol = _finalize_building_symbol(new_symbol)
 
                 # ==============================================================================
-                # --- ERZWINGE DIE LIVE-GLÄTTUNG AUS DER STATISCHEN KLASSE ---
+                # REPARATUR: vorher wurde hier StyleEngine.enable_building_smoothing (stale
+                # Klassenattribut) statt des Config-gesteuerten Parameters enable_smoothing
+                # gelesen - dadurch reagierte die Glättung nicht zuverlässig auf die Checkbox.
                 # ==============================================================================
-                live_smoothing = StyleEngine.enable_building_smoothing
+                live_smoothing = enable_smoothing
 
                 if new_symbol:
                     for i in range(new_symbol.symbolLayerCount()):
@@ -1953,8 +1961,10 @@ class StyleEngine:
         # ------------------------------------------------------------------
         else:
             def _apply_building_smoothing(symbol):
-                # Wir lesen auch hier den globalen Klassen-Wert aus!
-                live_smoothing = StyleEngine.enable_building_smoothing
+                # REPARATUR: vorher wurde hier StyleEngine.enable_building_smoothing (stale
+                # Klassenattribut) statt des Config-gesteuerten Parameters enable_smoothing
+                # gelesen.
+                live_smoothing = enable_smoothing
 
                 if not symbol:
                     return
@@ -2044,10 +2054,17 @@ class StyleEngine:
             layer.setFeatureBlendMode(0)
 
         # ==============================================================================
-        # Ab hier läuft dein Label-Code völlig unverändert weiter:
+        # REPARATUR: vorher wurde hier "StyleEngine.enable_building_labels"/
+        # "StyleEngine.enable_building_shadow" gelesen - zwei stale Klassenattribute,
+        # die nur bei offenem Dialog per Checkbox-Klick aktualisiert wurden und bei
+        # einem headless run() nie mit der Config synchronisiert wurden. Zusätzlich
+        # sorgte "or StyleEngine.enable_building_shadow is True" dafür, dass die
+        # Beschriftung immer an ging, sobald der 2.5D-Schatten-Haken aktiv war -
+        # unabhängig vom eigentlichen Beschriftungs-Haken. Jetzt zählt ausschließlich
+        # der Config-gesteuerte Parameter enable_labels.
         # ==============================================================================
         has_name = fields.indexOf("name") >= 0
-        if (StyleEngine.enable_building_labels is True and has_name) or StyleEngine.enable_building_shadow is True:
+        if bool(enable_labels) and has_name:
 
             label_settings = QgsPalLayerSettings()
             label_settings.fieldName = "name"
@@ -2063,7 +2080,7 @@ class StyleEngine:
             layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
             layer.setLabelsEnabled(True)
 
-        elif StyleEngine.enable_building_labels is False:
+        else:
             layer.setLabelsEnabled(False)
             layer.setLabeling(None)
 
