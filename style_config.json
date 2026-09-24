@@ -1393,14 +1393,14 @@
             "geom": "Line",
             "value": "primary",
             "style": "hauptstrasse",
-            "label": "ddd"
+            "label": "Hauptstrasse"
         },
         {
             "active": true,
             "geom": "Line",
             "value": "secondary",
             "style": "landstrasse",
-            "label": "eeee"
+            "label": "Landstrasse"
         },
         {
             "active": true,
@@ -1408,7 +1408,14 @@
             "value": "hospital",
             "style": "hospital.svg",
             "label": "Krankenhaus"
+        },
+        {
+            "active": true,
+            "geom": "Point",
+            "value": "",
+            "style": "",
+            "label": ""
         }
     ],
-    "road_style_mode": 1
+    "road_style_mode": 2
 }
