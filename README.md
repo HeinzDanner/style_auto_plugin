@@ -64,7 +64,7 @@ even when layer and field names don't match exactly.
 
 ## Requirements
 
-- QGIS 3.28 or newer
+- QGIS 3.28 or newer, including QGIS 4.x (PyQt6)
 - A valid configuration file in the plugin directory
 
 ## Plugin Structure
@@ -126,6 +126,13 @@ Run on Windows, for example, with:
 ```text
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pip install pytest
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
+```
+
+The suite (54 tests) is verified green on both QGIS 3.44 (PyQt5) and QGIS 4.2.2 (PyQt6); on QGIS 4 use `python-qgis.bat` instead of `python-qgis-ltr.bat`:
+
+```text
+"C:\Program Files\QGIS 4.2.2\bin\python-qgis.bat" -m pip install pytest
+"C:\Program Files\QGIS 4.2.2\bin\python-qgis.bat" -m pytest tests -v
 ```
 
 ## Usage

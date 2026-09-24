@@ -2,7 +2,7 @@ import os
 import qgis.utils
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QColor, QFont
+from qgis.PyQt.QtGui import QColor, QFont, QPainter
 from qgis.core import (
     Qgis,  # --- FIX: Import the core enum for log levels (Critical, Warning, Info). ---
     QgsProject,
@@ -1207,7 +1207,7 @@ class StyleEngine:
                     if enable_building_features:
 
                         if hasattr(layer, "setFeatureBlendMode"):
-                            layer.setFeatureBlendMode(0)
+                            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
                         success = self.apply_building_symbol_mapping(
 
@@ -1374,7 +1374,7 @@ class StyleEngine:
                     if enable_building_features:
 
                         if hasattr(layer, "setFeatureBlendMode"):
-                            layer.setFeatureBlendMode(0)
+                            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
                         self.apply_building_symbol_mapping(
 
@@ -1534,9 +1534,9 @@ class StyleEngine:
             for i in range(symbol.symbolLayerCount()):
                 layer_item = symbol.symbolLayer(i)
                 if hasattr(layer_item, "setPenJoinStyle"):
-                    layer_item.setPenJoinStyle(Qt.RoundJoin)
+                    layer_item.setPenJoinStyle(Qt.PenJoinStyle.RoundJoin)
                 if hasattr(layer_item, "setPenCapStyle"):
-                    layer_item.setPenCapStyle(Qt.RoundCap)
+                    layer_item.setPenCapStyle(Qt.PenCapStyle.RoundCap)
 
 
         # --- Strategy for pure single-symbol styling (mode 1) ---
@@ -1676,7 +1676,7 @@ class StyleEngine:
         # Optional: if motorways should always appear on top,
         # this QGIS setting helps them cross bridges cleanly
         if hasattr(layer, "setFeatureBlendMode"):
-            layer.setFeatureBlendMode(0)  # Normal mode; avoids transparency artifacts
+            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_SourceOver)  # Normal mode; avoids transparency artifacts
 
         # ==============================================================================
         # Road-name labeling and finalization - applies to modes 1 and 2
@@ -1750,7 +1750,7 @@ class StyleEngine:
                         sl.setStrokeColor(QColor("#cbbcb9"))
                     sl.setStrokeWidth(0.1)
                     if hasattr(sl, "setStrokeStyle"):
-                        sl.setStrokeStyle(Qt.SolidLine)
+                        sl.setStrokeStyle(Qt.PenStyle.SolidLine)
 
         def _apply_building_shadow(symbol):
             # FIX: this previously always read the global class attribute
@@ -1794,14 +1794,14 @@ class StyleEngine:
                     for idx in range(symbol.symbolLayerCount()):
                         sl = symbol.symbolLayer(idx)
                         # Check using the imported QPointF
-                        if hasattr(sl, "offset") and sl.offset() == QPointF(0.6, 0.6) and sl.strokeStyle() == Qt.NoPen:
+                        if hasattr(sl, "offset") and sl.offset() == QPointF(0.6, 0.6) and sl.strokeStyle() == Qt.PenStyle.NoPen:
                             schon_da = True
                             break
 
                     if not schon_da:
                         shadow_layer = QgsSimpleFillSymbolLayer()
                         shadow_layer.setFillColor(QColor(0, 0, 0, 45))
-                        shadow_layer.setStrokeStyle(Qt.NoPen)
+                        shadow_layer.setStrokeStyle(Qt.PenStyle.NoPen)
 
                         # Safe assignment
                         shadow_layer.setOffset(QPointF(0.6, 0.6))
@@ -1817,7 +1817,7 @@ class StyleEngine:
                     schichten_zu_loeschen = []
                     for idx in range(symbol.symbolLayerCount()):
                         sl = symbol.symbolLayer(idx)
-                        if hasattr(sl, "offset") and sl.offset() == QPointF(0.6, 0.6) and sl.strokeStyle() == Qt.NoPen:
+                        if hasattr(sl, "offset") and sl.offset() == QPointF(0.6, 0.6) and sl.strokeStyle() == Qt.PenStyle.NoPen:
                             schichten_zu_loeschen.append(idx)
 
                     for idx in reversed(schichten_zu_loeschen):
@@ -1904,7 +1904,7 @@ class StyleEngine:
                     layer_item.setFillColor(QColor(cfg.get("fill", "#ebdcd9")))
                     layer_item.setStrokeColor(QColor(cfg.get("border", "#cbbcb9")))
                     layer_item.setStrokeWidth(0.1)
-                    layer_item.setStrokeStyle(Qt.SolidLine)
+                    layer_item.setStrokeStyle(Qt.PenStyle.SolidLine)
                     new_symbol = QgsFillSymbol()
                     new_symbol.changeSymbolLayer(0, layer_item)
                 new_symbol = _finalize_building_symbol(new_symbol)
@@ -1929,9 +1929,9 @@ class StyleEngine:
                                 else:
                                     layer_item.setStrokeColor(QColor("#cbbcb9"))
                                 layer_item.setStrokeWidth(0.1)
-                                layer_item.setStrokeStyle(Qt.SolidLine)
+                                layer_item.setStrokeStyle(Qt.PenStyle.SolidLine)
                             else:
-                                layer_item.setStrokeStyle(Qt.NoPen)
+                                layer_item.setStrokeStyle(Qt.PenStyle.NoPen)
                                 layer_item.setStrokeWidth(0.0)
 
                 # Continue with the existing code path unchanged:
@@ -1974,7 +1974,7 @@ class StyleEngine:
                     for i in range(symbol.symbolLayerCount()):
                         sl = symbol.symbolLayer(i)
                         if hasattr(sl, "setStrokeStyle"):
-                            sl.setStrokeStyle(Qt.NoPen)
+                            sl.setStrokeStyle(Qt.PenStyle.NoPen)
                             sl.setStrokeWidth(0.0)
                     return
 
@@ -1989,7 +1989,7 @@ class StyleEngine:
                             layer_item.setStrokeColor(QColor("#cbbcb9"))
                         layer_item.setStrokeWidth(0.1)
                         if hasattr(layer_item, "setStrokeStyle"):
-                            layer_item.setStrokeStyle(Qt.SolidLine)
+                            layer_item.setStrokeStyle(Qt.PenStyle.SolidLine)
 
             updated_categories = []
 
@@ -2051,7 +2051,7 @@ class StyleEngine:
             active_renderer.setUsingSymbolLevels(True)
 
         if hasattr(layer, "setFeatureBlendMode"):
-            layer.setFeatureBlendMode(0)
+            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
         # ==============================================================================
         # FIX: this previously read "StyleEngine.enable_building_labels" and
@@ -2409,7 +2409,9 @@ class StyleEngine:
                 label_settings.fitInPolygonOnly = True  # Draw only when it fits within the area
 
                 text_format = QgsTextFormat()
-                text_format.setFont(QFont("Arial", 7, QFont.StyleItalic))  # Italic styling for natural areas
+                landuse_label_font = QFont("Arial", 7)
+                landuse_label_font.setItalic(True)  # Italic styling for natural areas
+                text_format.setFont(landuse_label_font)
                 text_format.setColor(QColor("#454545"))
 
                 # Subtle white buffer to keep text readable on green/blue backgrounds
