@@ -155,8 +155,10 @@ class StyleAutoPlugin:
         if self.layer_combo:
             try:
                 self.iface.currentLayerChanged.disconnect(self._sync_combo_with_canvas)
-            except (TypeError, RuntimeError):
-                pass
+            except (TypeError, RuntimeError) as disconnect_err:
+                QgsMessageLog.logMessage(
+                    f"currentLayerChanged war nicht verbunden: {disconnect_err}",
+                    "Style Auto Plugin", Qgis.Info)
             self.layer_combo = None
         if self.toolbar:
             del self.toolbar
@@ -165,8 +167,10 @@ class StyleAutoPlugin:
         try:
             if self.layer_combo and layer and layer.type() == QgsMapLayerType.VectorLayer:
                 self.layer_combo.setLayer(layer)
-        except (RuntimeError, SystemError):
-            pass
+        except (RuntimeError, SystemError) as sync_err:
+            QgsMessageLog.logMessage(
+                f"Layer-Combo konnte nicht synchronisiert werden: {sync_err}",
+                "Style Auto Plugin", Qgis.Info)
 
     # ------------------------------------------------------------------
     # Result handling
@@ -201,8 +205,10 @@ class StyleAutoPlugin:
         canvas = self.iface.mapCanvas()
         try:
             canvas.renderComplete.disconnect(self._on_canvas_render_complete)
-        except TypeError:
-            pass
+        except TypeError as disconnect_err:
+            QgsMessageLog.logMessage(
+                f"renderComplete war nicht verbunden: {disconnect_err}",
+                "Style Auto Plugin", Qgis.Info)
         self._timing_connected = False
         self._timing_start = None
 
