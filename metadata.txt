@@ -1,7 +1,7 @@
 [general]
 name=Style Auto Plugin
 description=Automatically applies categorized styles to the active layer using JSON-based rules.
-version=0.1.0
+version=0.1.1
 qgisMinimumVersion=3.28
 author=Heinz Danner
 email=heinz.danner.dev@gmx.net
