@@ -334,7 +334,8 @@ class StyleAutoPlugin:
 
         # self.import_missing_single_symbols_from_xml()
         dialog = StyleAutoPluginDialog(self.iface.mainWindow(), active_config=bestehende_daten)
-        if dialog.exec_():
+        result = dialog.exec() if hasattr(dialog, 'exec') else dialog.exec_()
+        if result:
             bestehende_daten["road_style_mode"] = dialog.mode_combo.currentIndex()
             bestehende_daten["enable_advanced_road_features"] = dialog.cb_road_base.isChecked()
             bestehende_daten["enable_advanced_building_features"] = dialog.cb_building_base.isChecked()

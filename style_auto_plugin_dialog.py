@@ -6,6 +6,13 @@ from qgis.core import QgsSettings, QgsMessageLog, Qgis, QgsProject, QgsStyle
 from .style_engine import style_engine
 
 
+def _qt_alignment(member):
+    scoped_enum = getattr(Qt, "AlignmentFlag", None)
+    if scoped_enum is not None:
+        return getattr(scoped_enum, member)
+    return getattr(Qt, member)
+
+
 class StyleAutoPluginDialog(QDialog):
     def __init__(self, parent=None, active_config=None):
         super().__init__(parent)
@@ -170,7 +177,7 @@ class StyleAutoPluginDialog(QDialog):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_widget = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_widget)
-        self.scroll_layout.setAlignment(Qt.AlignTop)
+        self.scroll_layout.setAlignment(_qt_alignment("AlignTop"))
         self.scroll_area.setWidget(self.scroll_widget)
         single_main_layout.addWidget(self.scroll_area)
 

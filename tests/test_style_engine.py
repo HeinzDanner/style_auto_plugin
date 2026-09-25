@@ -139,7 +139,8 @@ def test_mode1_line_layer_enables_symbol_levels_and_round_caps(engine, symbols_l
         for i in range(symbol.symbolLayerCount()):
             sl = symbol.symbolLayer(i)
             if hasattr(sl, "penJoinStyle"):
-                if sl.penJoinStyle() == Qt.RoundJoin:
+                qt_round_join = getattr(getattr(Qt, "PenJoinStyle", Qt), "RoundJoin")
+                if sl.penJoinStyle() == qt_round_join:
                     found_round_join = True
     assert found_round_join is True
 

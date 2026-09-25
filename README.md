@@ -156,6 +156,10 @@ The table at the bottom of the settings dialog (used in Mode 1 and Mode 2) lets 
 
 ![Road hierarchy detail](docs/screenshots/road_hierarchy.png)
 
+![Three styled layers](docs/screenshots/three_styled_layers.png)
+
+![Landuse styling](docs/screenshots/landuse.png)
+
 ## Behavior for Missing Values
 
 If the layer contains values for which no explicit rule exists, two cases are possible:
