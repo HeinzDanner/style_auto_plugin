@@ -184,6 +184,10 @@ Coming from Java, a few things stand out in hindsight that I would design differ
 - **Defensive "kill switch" guards:** several features had multiple redundant early-return guards added independently over time (sometimes three separate places blocking the same code path for the same condition). Consolidating a boolean's effect into exactly one place would have prevented the "toggle off breaks something else entirely" class of bugs I ran into.
 - **Testing came later than it should have:** the pytest suite (54 tests, using real in-memory QGIS layers) was added after the initial feature set existed, once bugs from manual testing started piling up. Writing tests alongside the first working version — even a handful — would have caught the API-name bug (`setJoinStyle`/`setCapStyle` don't exist on `QgsSimpleLineSymbolLayer`; the real methods are `setPenJoinStyle`/`setPenCapStyle`) immediately instead of after real-world use.
 
+A special thank you to my Coach **Dominic** and the [Java Development with AI Bootcamp](https://www.neuefische.de/en/bootcamp/java-development) for the guidance and support in structured software development.
+
 ## License
 
 This plugin is licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later). The full license text is available in the `LICENSE` file.
+
+The team and coaches from the [GIS und Web Developer](https://gis-trainer.com/de/gis_web.php) program for their excellent support.
