@@ -190,4 +190,4 @@ A special thank you to my Coach **Dominic** and the [Java Development with AI Bo
 
 This plugin is licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later). The full license text is available in the `LICENSE` file.
 
-The team and coaches from the [GIS und Web Developer](https://gis-trainer.com/de/gis_web.php) program for their excellent support.
+A special thank you to the team and coaches from the [GIS und Web Developer](https://gis-trainer.com) program for their excellent support.
