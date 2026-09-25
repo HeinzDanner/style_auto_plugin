@@ -922,8 +922,10 @@ class StyleEngine:
                 if not erste_zeile or "<" not in erste_zeile:
                     # Keep the fast crash guard, but without extra log noise.
                     return False, "Datei ist korrupt."
-            except Exception:
-                pass
+            except Exception as sanity_err:
+                QgsMessageLog.logMessage(
+                    f"Sanity-Check für qml_path fehlgeschlagen: {sanity_err}",
+                    "Style Auto Plugin", Qgis.Warning)
 
         result = layer.loadNamedStyle(qml_path)
         success = False
@@ -1722,8 +1724,10 @@ class StyleEngine:
             iface = qgis.utils.iface
             if iface and iface.layerTreeView():
                 iface.layerTreeView().refreshLayerSymbology(layer.id())
-        except Exception:
-            pass
+        except Exception as refresh_err:
+            QgsMessageLog.logMessage(
+                f"Konnte Layer-Symbologie nicht aktualisieren: {refresh_err}",
+                "Style Auto Plugin", Qgis.Warning)
 
         if hasattr(layer, "emitStyleChanged"):
             layer.emitStyleChanged()
@@ -1810,7 +1814,9 @@ class StyleEngine:
                         symbol.insertSymbolLayer(0, shadow_layer)
 
                 except Exception as shadow_err:
-                    pass
+                    QgsMessageLog.logMessage(
+                        f"Konnte Schatten-Effekt nicht anwenden: {shadow_err}",
+                        "Style Auto Plugin", Qgis.Warning)
 
             else:
                 try:
@@ -1822,8 +1828,10 @@ class StyleEngine:
 
                     for idx in reversed(schichten_zu_loeschen):
                         symbol.deleteSymbolLayer(idx)
-                except Exception:
-                    pass
+                except Exception as remove_err:
+                    QgsMessageLog.logMessage(
+                        f"Konnte Schatten-Symbolebene nicht entfernen: {remove_err}",
+                        "Style Auto Plugin", Qgis.Warning)
 
             return symbol
 
@@ -2090,8 +2098,10 @@ class StyleEngine:
             iface = qgis.utils.iface
             if iface and iface.layerTreeView():
                 iface.layerTreeView().refreshLayerSymbology(layer.id())
-        except Exception:
-            pass
+        except Exception as refresh_err:
+            QgsMessageLog.logMessage(
+                f"Konnte Layer-Symbologie nicht aktualisieren: {refresh_err}",
+                "Style Auto Plugin", Qgis.Warning)
 
         layer.triggerRepaint()
         return True
@@ -2369,8 +2379,10 @@ class StyleEngine:
             iface = qgis.utils.iface
             if iface and iface.layerTreeView():
                 iface.layerTreeView().refreshLayerSymbology(layer.id())
-        except Exception:
-            pass
+        except Exception as refresh_err:
+            QgsMessageLog.logMessage(
+                f"Konnte Layer-Symbologie nicht aktualisieren: {refresh_err}",
+                "Style Auto Plugin", Qgis.Warning)
 
         layer.triggerRepaint()
         return True

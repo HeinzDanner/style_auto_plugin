@@ -279,7 +279,9 @@ class StyleAutoPlugin:
                             setattr(config, "custom_mappings", file_data["custom_mappings"])
                             mappings_geladen = True
             except Exception as read_err:
-                pass
+                QgsMessageLog.logMessage(
+                    f"Konnte custom_mappings nicht aus style_config.json lesen: {read_err}",
+                    "Style Auto Plugin", Qgis.Warning)
 
 
         # Set fallback mappings if the JSON file was empty
@@ -320,7 +322,9 @@ class StyleAutoPlugin:
                 with open(json_path, "r", encoding="utf-8") as f:
                     bestehende_daten = json.load(f)
             except Exception as e:
-                pass
+                QgsMessageLog.logMessage(
+                    f"Konnte style_config.json nicht lesen: {e}",
+                    "Style Auto Plugin", Qgis.Warning)
 
         # self.import_missing_single_symbols_from_xml()
         dialog = StyleAutoPluginDialog(self.iface.mainWindow(), active_config=bestehende_daten)
@@ -346,11 +350,14 @@ class StyleAutoPlugin:
                 if hasattr(style_config, "load_config"):
                     try:
                         style_config.load_config()
-                    except:
-                        pass
+                    except Exception as reload_err:
+                        QgsMessageLog.logMessage(
+                            f"Konnte style_config nicht neu laden: {reload_err}",
+                            "Style Auto Plugin", Qgis.Warning)
             except Exception as json_err:
-                # No more log spam
-                pass
+                QgsMessageLog.logMessage(
+                    f"Konnte style_config.json nicht schreiben: {json_err}",
+                    "Style Auto Plugin", Qgis.Warning)
 
     def _ensure_default_single_symbol_mappings(self):
 
@@ -390,8 +397,10 @@ class StyleAutoPlugin:
             try:
                 # If the main class provides its own save function, run it
                 self.save_settings()
-            except Exception:
-                pass
+            except Exception as save_err:
+                QgsMessageLog.logMessage(
+                    f"Konnte Einstellungen nicht speichern: {save_err}",
+                    "Style Auto Plugin", Qgis.Warning)
 
 
     def import_missing_single_symbols_from_xml(self):
