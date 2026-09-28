@@ -68,18 +68,18 @@ class StyleAutoPlugin:
         # --- Global muting: suppress every engine log message in the background ---
         # ==============================================================================
         self.engine = StyleEngine(
-            logger=lambda msg, lvl=Qgis.Info: None,  # Silently absorbs every text message in memory.
+            logger=lambda msg, lvl=Qgis.MessageLevel.Info: None,  # Silently absorbs every text message in memory.
             config=config
         )
         # self.engine = StyleEngine(
-        #    logger=lambda msg, lvl=Qgis.Info: QgsMessageLog.logMessage(str(msg), "Style Auto Plugin", lvl),
+        #    logger=lambda msg, lvl=Qgis.MessageLevel.Info: QgsMessageLog.logMessage(str(msg), "Style Auto Plugin", lvl),
         #    config=config)
 
     def tr(self, message):
         """Helper for translation in the main plugin context."""
         return QCoreApplication.translate('StyleAutoPlugin', message)
 
-    def push_message(self, text, level=Qgis.Info, duration=5):
+    def push_message(self, text, level=Qgis.MessageLevel.Info, duration=5):
         self.iface.messageBar().pushMessage("Style Auto Plugin", str(text), level=level, duration=duration)
 
     # ------------------------------------------------------------------
@@ -94,7 +94,7 @@ class StyleAutoPlugin:
 
         # 2. Add the smart layer drop-down menu
         self.layer_combo = QgsMapLayerComboBox(self.iface.mainWindow())
-        self.layer_combo.setFilters(QgsMapLayerProxyModel.VectorLayer)
+        self.layer_combo.setFilters(QgsMapLayerProxyModel.Filter.VectorLayer)
         self.layer_combo.setMinimumWidth(200)
 
         self.iface.currentLayerChanged.connect(self._sync_combo_with_canvas)
@@ -158,7 +158,7 @@ class StyleAutoPlugin:
             except (TypeError, RuntimeError) as disconnect_err:
                 QgsMessageLog.logMessage(
                     f"currentLayerChanged war nicht verbunden: {disconnect_err}",
-                    "Style Auto Plugin", Qgis.Info)
+                    "Style Auto Plugin", Qgis.MessageLevel.Info)
             self.layer_combo = None
         if self.toolbar:
             del self.toolbar
@@ -170,14 +170,14 @@ class StyleAutoPlugin:
         except (RuntimeError, SystemError) as sync_err:
             QgsMessageLog.logMessage(
                 f"Layer-Combo konnte nicht synchronisiert werden: {sync_err}",
-                "Style Auto Plugin", Qgis.Info)
+                "Style Auto Plugin", Qgis.MessageLevel.Info)
 
     # ------------------------------------------------------------------
     # Result handling
     # ------------------------------------------------------------------
     def handle_engine_result(self, result):
         if not result:
-            self.push_message("Unbekanntes Ergebnis der Style-Engine.", level=Qgis.Warning, duration=6)
+            self.push_message("Unbekanntes Ergebnis der Style-Engine.", level=Qgis.MessageLevel.Warning, duration=6)
             return
         success = bool(result.get("success", False))
         message = result.get("message", "")
@@ -185,11 +185,11 @@ class StyleAutoPlugin:
         missing_values = result.get("missing_values", []) or []
 
         if level_name == "critical":
-            level = Qgis.Critical
+            level = Qgis.MessageLevel.Critical
         elif level_name == "warning":
-            level = Qgis.Warning
+            level = Qgis.MessageLevel.Warning
         else:
-            level = Qgis.Info
+            level = Qgis.MessageLevel.Info
 
         if message:
             self.push_message(message, level=level, duration=6)
@@ -201,14 +201,14 @@ class StyleAutoPlugin:
         if self._timing_start is None:
             return
         duration_ms = (time.perf_counter() - self._timing_start) * 1000.0
-       # QgsMessageLog.logMessage(f"TIMING: Gesamtzeit Style-Auto (Engine + Renderer): {duration_ms:.0f} ms","Style Auto Plugin", Qgis.Info)
+       # QgsMessageLog.logMessage(f"TIMING: Gesamtzeit Style-Auto (Engine + Renderer): {duration_ms:.0f} ms","Style Auto Plugin", Qgis.MessageLevel.Info)
         canvas = self.iface.mapCanvas()
         try:
             canvas.renderComplete.disconnect(self._on_canvas_render_complete)
         except TypeError as disconnect_err:
             QgsMessageLog.logMessage(
                 f"renderComplete war nicht verbunden: {disconnect_err}",
-                "Style Auto Plugin", Qgis.Info)
+                "Style Auto Plugin", Qgis.MessageLevel.Info)
         self._timing_connected = False
         self._timing_start = None
 
@@ -219,12 +219,12 @@ class StyleAutoPlugin:
         self._timing_start = time.perf_counter()
         config, config_error = style_config.get_config()
         if config_error:
-            self.push_message(config_error, level=Qgis.Critical, duration=8)
+            self.push_message(config_error, level=Qgis.MessageLevel.Critical, duration=8)
             self._timing_start = None
             return
 
         if config is None:
-            self.push_message("Konfiguration konnte nicht geladen werden.", level=Qgis.Critical, duration=8)
+            self.push_message("Konfiguration konnte nicht geladen werden.", level=Qgis.MessageLevel.Critical, duration=8)
             self._timing_start = None
             return
 
@@ -233,7 +233,7 @@ class StyleAutoPlugin:
             layer = self.layer_combo.currentLayer()
 
         if layer is None:
-            self.push_message("Kein Layer im Dropdown ausgewählt.", level=Qgis.Warning, duration=4)
+            self.push_message("Kein Layer im Dropdown ausgewählt.", level=Qgis.MessageLevel.Warning, duration=4)
             self._timing_start = None
             return
 
@@ -287,7 +287,7 @@ class StyleAutoPlugin:
             except Exception as read_err:
                 QgsMessageLog.logMessage(
                     f"Konnte custom_mappings nicht aus style_config.json lesen: {read_err}",
-                    "Style Auto Plugin", Qgis.Warning)
+                    "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
 
         # Set fallback mappings if the JSON file was empty
@@ -330,11 +330,11 @@ class StyleAutoPlugin:
             except Exception as e:
                 QgsMessageLog.logMessage(
                     f"Konnte style_config.json nicht lesen: {e}",
-                    "Style Auto Plugin", Qgis.Warning)
+                    "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
         # self.import_missing_single_symbols_from_xml()
         dialog = StyleAutoPluginDialog(self.iface.mainWindow(), active_config=bestehende_daten)
-        result = dialog.exec() if hasattr(dialog, 'exec') else dialog.exec_()
+        result = dialog.exec()
         if result:
             bestehende_daten["road_style_mode"] = dialog.mode_combo.currentIndex()
             bestehende_daten["enable_advanced_road_features"] = dialog.cb_road_base.isChecked()
@@ -360,11 +360,11 @@ class StyleAutoPlugin:
                     except Exception as reload_err:
                         QgsMessageLog.logMessage(
                             f"Konnte style_config nicht neu laden: {reload_err}",
-                            "Style Auto Plugin", Qgis.Warning)
+                            "Style Auto Plugin", Qgis.MessageLevel.Warning)
             except Exception as json_err:
                 QgsMessageLog.logMessage(
                     f"Konnte style_config.json nicht schreiben: {json_err}",
-                    "Style Auto Plugin", Qgis.Warning)
+                    "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
     def _ensure_default_single_symbol_mappings(self):
 
@@ -407,7 +407,7 @@ class StyleAutoPlugin:
             except Exception as save_err:
                 QgsMessageLog.logMessage(
                     f"Konnte Einstellungen nicht speichern: {save_err}",
-                    "Style Auto Plugin", Qgis.Warning)
+                    "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
 
     def import_missing_single_symbols_from_xml(self):
@@ -416,7 +416,7 @@ class StyleAutoPlugin:
             QgsMessageLog.logMessage(
                 f"[SYMBOL-IMPORT] style_symbols.xml nicht gefunden: {xml_path}",
                 "Style Auto Plugin",
-                Qgis.Warning
+                Qgis.MessageLevel.Warning
             )
             return
 

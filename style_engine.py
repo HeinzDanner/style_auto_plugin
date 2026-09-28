@@ -51,7 +51,7 @@ def _normal_composition_mode():
     scoped_enum = getattr(QPainter, "CompositionMode", None)
     if scoped_enum is not None:
         return scoped_enum.CompositionMode_SourceOver
-    return QPainter.CompositionMode_SourceOver
+    return getattr(QPainter, "CompositionMode_SourceOver")
 
 
 QT_NORMAL_COMPOSITION_MODE = _normal_composition_mode()
@@ -948,7 +948,7 @@ class StyleEngine:
             except Exception as sanity_err:
                 QgsMessageLog.logMessage(
                     f"Sanity-Check für qml_path fehlgeschlagen: {sanity_err}",
-                    "Style Auto Plugin", Qgis.Warning)
+                    "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
         result = layer.loadNamedStyle(qml_path)
         success = False
@@ -1717,11 +1717,11 @@ class StyleEngine:
         if bool(enable_labels) and has_name:
             label_settings = QgsPalLayerSettings()
             label_settings.fieldName = "name"
-            label_settings.placement = QgsPalLayerSettings.Line
+            label_settings.placement = QgsPalLayerSettings.Placement.Line
 
             # Density optimization for repeated road labels
             label_settings.repeatDistance = 700
-            label_settings.repeatDistanceUnit = QgsUnitTypes.RenderMillimeters
+            label_settings.repeatDistanceUnit = QgsUnitTypes.RenderUnit.RenderMillimeters
             label_settings.minimumFeatureSize = 20
             label_settings.removeDuplicateLabels = True
 
@@ -1750,7 +1750,7 @@ class StyleEngine:
         except Exception as refresh_err:
             QgsMessageLog.logMessage(
                 f"Konnte Layer-Symbologie nicht aktualisieren: {refresh_err}",
-                "Style Auto Plugin", Qgis.Warning)
+                "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
         if hasattr(layer, "emitStyleChanged"):
             layer.emitStyleChanged()
@@ -1795,7 +1795,7 @@ class StyleEngine:
             effect.setEnabled(True)
             effect.setBlurLevel(1.5)
             effect.setOffsetDistance(0.6)
-            effect.setOffsetUnit(QgsUnitTypes.RenderMillimeters)
+            effect.setOffsetUnit(QgsUnitTypes.RenderUnit.RenderMillimeters)
             effect.setColor(QColor(0, 0, 0, 60))
 
             stack = QgsEffectStack()
@@ -1832,14 +1832,14 @@ class StyleEngine:
 
                         # Safe assignment
                         shadow_layer.setOffset(QPointF(0.6, 0.6))
-                        shadow_layer.setOffsetUnit(QgsUnitTypes.RenderMillimeters)
+                        shadow_layer.setOffsetUnit(QgsUnitTypes.RenderUnit.RenderMillimeters)
 
                         symbol.insertSymbolLayer(0, shadow_layer)
 
                 except Exception as shadow_err:
                     QgsMessageLog.logMessage(
                         f"Konnte Schatten-Effekt nicht anwenden: {shadow_err}",
-                        "Style Auto Plugin", Qgis.Warning)
+                        "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
             else:
                 try:
@@ -1854,7 +1854,7 @@ class StyleEngine:
                 except Exception as remove_err:
                     QgsMessageLog.logMessage(
                         f"Konnte Schatten-Symbolebene nicht entfernen: {remove_err}",
-                        "Style Auto Plugin", Qgis.Warning)
+                        "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
             return symbol
 
@@ -2098,7 +2098,7 @@ class StyleEngine:
 
             label_settings = QgsPalLayerSettings()
             label_settings.fieldName = "name"
-            label_settings.placement = QgsPalLayerSettings.Horizontal
+            label_settings.placement = QgsPalLayerSettings.Placement.Horizontal
             label_settings.centroidWhole = True
             label_settings.fitInPolygonOnly = True
 
@@ -2124,7 +2124,7 @@ class StyleEngine:
         except Exception as refresh_err:
             QgsMessageLog.logMessage(
                 f"Konnte Layer-Symbologie nicht aktualisieren: {refresh_err}",
-                "Style Auto Plugin", Qgis.Warning)
+                "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
         layer.triggerRepaint()
         return True
@@ -2222,12 +2222,12 @@ class StyleEngine:
                     symbol_layer = QgsSvgMarkerSymbolLayer(svg_path, 5.0)
                 else:
                     shape_str = cfg.get("shape", "circle")
-                    shape_map = {"circle": QgsSimpleMarkerSymbolLayer.Circle,
-                                 "square": QgsSimpleMarkerSymbolLayer.Square,
-                                 "diamond": QgsSimpleMarkerSymbolLayer.Diamond,
-                                 "triangle": QgsSimpleMarkerSymbolLayer.Triangle}
+                    shape_map = {"circle": QgsSimpleMarkerSymbolLayer.Shape.Circle,
+                                 "square": QgsSimpleMarkerSymbolLayer.Shape.Square,
+                                 "diamond": QgsSimpleMarkerSymbolLayer.Shape.Diamond,
+                                 "triangle": QgsSimpleMarkerSymbolLayer.Shape.Triangle}
                     symbol_layer = QgsSimpleMarkerSymbolLayer()
-                    symbol_layer.setShape(shape_map.get(shape_str, QgsSimpleMarkerSymbolLayer.Circle))
+                    symbol_layer.setShape(shape_map.get(shape_str, QgsSimpleMarkerSymbolLayer.Shape.Circle))
                     symbol_layer.setFillColor(QColor(cfg.get("color", "#ff0000")))
                     symbol_layer.setStrokeColor(QColor("#ffffff"))
                     symbol_layer.setStrokeWidth(0.4)
@@ -2348,12 +2348,12 @@ class StyleEngine:
                         new_symbol.changeSymbolLayer(0, svg_layer)
                     elif strategy == "simple":
                         shape_str = matched_cfg.get("shape", "circle")
-                        shape_map = {"circle": QgsSimpleMarkerSymbolLayer.Circle,
-                                     "square": QgsSimpleMarkerSymbolLayer.Square,
-                                     "diamond": QgsSimpleMarkerSymbolLayer.Diamond,
-                                     "triangle": QgsSimpleMarkerSymbolLayer.Triangle}
+                        shape_map = {"circle": QgsSimpleMarkerSymbolLayer.Shape.Circle,
+                                     "square": QgsSimpleMarkerSymbolLayer.Shape.Square,
+                                     "diamond": QgsSimpleMarkerSymbolLayer.Shape.Diamond,
+                                     "triangle": QgsSimpleMarkerSymbolLayer.Shape.Triangle}
                         marker_layer = QgsSimpleMarkerSymbolLayer()
-                        marker_layer.setShape(shape_map.get(shape_str, QgsSimpleMarkerSymbolLayer.Circle))
+                        marker_layer.setShape(shape_map.get(shape_str, QgsSimpleMarkerSymbolLayer.Shape.Circle))
                         marker_layer.setFillColor(QColor(matched_cfg.get("color", "#ff0000")))
                         marker_layer.setStrokeColor(QColor("#ffffff"))
                         marker_layer.setStrokeWidth(0.4)
@@ -2405,7 +2405,7 @@ class StyleEngine:
         except Exception as refresh_err:
             QgsMessageLog.logMessage(
                 f"Konnte Layer-Symbologie nicht aktualisieren: {refresh_err}",
-                "Style Auto Plugin", Qgis.Warning)
+                "Style Auto Plugin", Qgis.MessageLevel.Warning)
 
         layer.triggerRepaint()
         return True
@@ -2439,7 +2439,7 @@ class StyleEngine:
                 label_settings.fieldName = target_field
 
                 # Centered horizontal placement inside the polygon
-                label_settings.placement = QgsPalLayerSettings.Horizontal
+                label_settings.placement = QgsPalLayerSettings.Placement.Horizontal
                 label_settings.centroidWhole = True
                 label_settings.fitInPolygonOnly = True  # Draw only when it fits within the area
 
