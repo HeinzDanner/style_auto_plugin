@@ -4,7 +4,8 @@
 
 *A QGIS Python plugin that automatically applies categorized styling for roads, buildings, land use, and POIs to the active vector layer, driven by a JSON rule configuration and a PyQt settings dialog.*
 
-Style Auto Plugin is a QGIS Python plugin that automatically applies categorized styling to the currently active layer.
+Style Auto Plugin is a QGIS Python plugin that applies categorized styling to the
+selected layer, or adjusts its existing style without loading a base style.
 
 Styling rules are loaded efficiently from the configuration. Rulesets are selected by layer name, geometry type, field name, and priority. For values that are not explicitly configured, an optional fallback style can be applied.
 
@@ -42,8 +43,11 @@ apply_categorized_renderer_with_fallback()
    │                      configured value, with an optional fallback style for any
    │                      value that has no explicit rule
    ▼
-Styled layer + (Mode 1/2 only) optional road/building/land-use/label refinements
+Styled layer + (Mode 1/2) optional road/building/land-use/label refinements
 ```
+
+Mode 3 bypasses this base-styling pipeline and applies the configured options
+and GUI mappings directly to the existing renderer.
 
 Everything above the QGIS-symbol level is driven entirely by `style_rules.json` /
 `style_config.json` — adding a new layer type or value mapping is a config change,
@@ -56,7 +60,13 @@ even when layer and field names don't match exactly.
 
 - Automatic selection of the most suitable layer ruleset.
 - Priority-based selection of the appropriate field ruleset.
-- Three global styling modes (Mode 0, 1, and 2).
+- Four global styling modes (Mode 0, 1, 2, and 3).
+- Landuse polygons keep their JSON base colors in modes 0, 1 and 2. Modes 1 and 2
+  additionally apply matching polygon symbols from the GUI list and optional labels.
+  Mode 0 does not apply building effects to landuse polygons.
+  In mode 1 the landuse legend lists GUI matches individually and summarizes
+  the remaining entries as **Andere Werte**, without changing their map symbols.
+  Modes 0 and 2 show the full landuse legend again.
 - Several optional cartographic settings exposed through the GUI.
 - Field-based categorized symbology.
 - Duplicate-safe automatic symbol import for testing.
@@ -64,10 +74,64 @@ even when layer and field names don't match exactly.
 - Optional fallback styling for unconfigured values.
 - A robust, quiet core without excessive log output.
 
+### Styling modes
+
+| Mode | Behavior |
+|---|---|
+| 0: Base styling | Applies the configured JSON/QML base style without GUI symbol replacements. |
+| 1: Custom single styling | Builds custom road/building/point styling with a fallback; landuse keeps its base colors and applies matching GUI symbols, with a compact legend. |
+| 2: Combined styling | Applies the base style first, then GUI symbol replacements and cartographic options. |
+| 3: Options only | Keeps the existing style and applies options and matching GUI replacements, without loading a base style. |
+
+### Applying options without base styling
+
+Use **C** to select **Mode 3: Options Only (Keep Existing Style)** and save the
+cartographic options and GUI mappings. Then use **S** to apply them to the selected
+layer's existing style. Mode 3 never loads JSON rules or QML base styles.
+Modes 0, 1 and 2 retain their normal styling behavior.
+
+Single-symbol and categorized renderers are supported. Matching GUI entries
+replace only the corresponding symbols and legend texts; unmatched symbols keep
+their existing appearance. A single-symbol renderer is converted to categories
+only when a GUI entry matches an attribute value, with its original symbol kept
+for all other values. A matching classification field (`fclass`, `highway`,
+`landuse`, `building`, `type`, `amenity`, or `code`, depending on geometry) is
+required for these replacements. Rule-based and graduated renderers are left
+unchanged with a warning. Missing or incompatible mapped symbols also produce a
+warning instead of silently substituting a default symbol.
+
+In mode 3 the layer-tree legend shows only GUI matches for values present in the
+layer, plus one **Andere Werte** entry for the remaining visible categories.
+The latter is a representative legend entry: the underlying categories and
+their distinct symbols remain intact. Its checkbox switches all summarized
+categories on or off together; GUI matches remain independently switchable.
+The compact legend and category visibility are saved with the project. Modes 0
+and 2 restore the full legend; landuse in mode 1 also uses a compact legend.
+
+### Saving and loading configurations
+
+The configuration dialog (**C**) provides **Speichern ... / Save configuration...**
+and **Laden ... / Load configuration...** buttons for JSON files. Export includes
+the full configuration: base rules/profiles, global mode, checkbox settings and
+all GUI mapping rows with their active flags, geometry, attribute value, symbol
+name and legend text. Import replaces the current configuration and mapping
+list, including an explicitly empty list. The open dialog updates immediately:
+mode, checkboxes and mapping rows reflect the loaded file without reopening it.
+Invalid imports leave the current settings unchanged. Close the dialog to persist the
+imported settings in the plugin; apply them with **S**.
+
+Configurations reference symbols, SVGs and QML files by name/path; those resources
+are not embedded in the JSON export and must be available on the target computer.
+Missing symbols are indicated by a row tooltip, without changing the saved active
+flag or preventing the user from correcting the name.
+
 ## Requirements
 
 - QGIS 3.28 or newer
 - A valid configuration file in the plugin directory
+
+The current regression suite has been run on QGIS **3.44.9 (Qt5)** and
+**4.2.2 (Qt6)**. QGIS 3.28 has not been separately verified by these runs.
 
 ## Plugin Structure
 
@@ -78,11 +142,11 @@ style_auto_plugin/
 ├── __init__.py
 ├── LICENSE
 ├── README.md
-├── main.py
 ├── metadata.txt
 ├── style_auto_plugin.py
 ├── style_auto_plugin_dialog.py
 ├── style_config.py
+├── style_config.json
 ├── style_engine.py
 ├── style_rules.json
 └── styles/
@@ -114,20 +178,32 @@ C:\Users\<Username>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins
 
 ## Configuration
 
-Rules are loaded from the configuration file by default. The settings window automatically synchronizes tester changes with the local JSON file on each user's machine.
+Rules are loaded from `style_config.json`. Changes in the settings window update
+the dialog's configuration immediately and are written to the plugin's local
+JSON file when the dialog is accepted with **Close**. Use **S** to apply them.
 
 ## Tests
 
 The `tests/` directory contains a pytest suite:
 
+The complete suite currently contains **128 passing tests** on both tested QGIS
+versions. GitHub Actions runs only the pure-Python configuration tests; the badge
+does not represent the QGIS-dependent tests.
+
 - `test_style_config.py` validates only the parsing and coercion logic in `style_config.py` and can run with any regular Python interpreter, as long as `pytest` is installed. These tests also run in GitHub Actions CI (see the badge above).
 - `test_style_engine.py` and `test_style_auto_plugin.py` verify the actual styling logic functionally using real in-memory QGIS layers and therefore require the QGIS Python interpreter (`qgis.core`). They are intended for local execution, not CI, because no QGIS runtime image is available there.
+- `test_style_options.py` covers mode 3, preservation of existing symbols,
+  compact legends, grouped checkbox toggles and project save/reload.
+- `test_config_transfer.py` covers JSON import/export, invalid files, empty
+  mapping lists and immediate updates of the open configuration dialog.
+  Both also require the QGIS Python interpreter.
 
 Run on Windows, for example, with:
 
 ```text
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pip install pytest
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
+"C:\Program Files\QGIS 4.2.2\bin\python-qgis.bat" -m pytest tests -v
 ```
 
 ## Usage
@@ -142,7 +218,7 @@ Run on Windows, for example, with:
 
 ### Custom Single-Value Style Mappings
 
-The table at the bottom of the settings dialog (used in Mode 1 and Mode 2) lets you map one specific attribute value to one specific style, independent of the JSON ruleset. Example: a line feature with the OSM value `motorway` should be rendered as a highway, using the internal style `autobahn` and the human-readable legend text "Autobahn".
+The table at the bottom of the settings dialog (used in modes 1, 2 and 3) lets you map one specific attribute value to one specific style, independent of the JSON ruleset. Example: a line feature with the OSM value `motorway` should be rendered as a highway, using the internal style `autobahn` and the human-readable legend text "Autobahn".
 
 | Column | Meaning | Example |
 |---|---|---|

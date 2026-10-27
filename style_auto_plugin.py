@@ -87,6 +87,9 @@ class StyleAutoPlugin:
     # ------------------------------------------------------------------
     def initGui(self):
         self.import_missing_single_symbols_from_xml()
+        QgsProject.instance().layersAdded.connect(self.engine.bind_legend_groups)
+        QgsProject.instance().readProject.connect(self.engine.bind_project_legend_groups)
+        self.engine.bind_legend_groups()
 
         # 1. Create the plugin's own toolbar in QGIS
         self.toolbar = self.iface.addToolBar("Style Auto Plugin Toolbar")
@@ -146,6 +149,8 @@ class StyleAutoPlugin:
         self.iface.addPluginToMenu("&Style Auto Plugin", self.config_action)
 
     def unload(self):
+        QgsProject.instance().layersAdded.disconnect(self.engine.bind_legend_groups)
+        QgsProject.instance().readProject.disconnect(self.engine.bind_project_legend_groups)
         if self.action:
             self.iface.removePluginMenu("&Style Auto Plugin", self.action)
             self.action = None
@@ -215,7 +220,8 @@ class StyleAutoPlugin:
     # ------------------------------------------------------------------
     # Main entry point (start button)
     # ------------------------------------------------------------------
-    def run(self):
+    def run(self, checked=False):
+        options_only = False
         self._timing_start = time.perf_counter()
         config, config_error = style_config.get_config()
         if config_error:
@@ -281,17 +287,27 @@ class StyleAutoPlugin:
 
                         if "road_style_mode" in file_data:
                             setattr(config, "road_style_mode", int(file_data["road_style_mode"]))
+                        options_only = getattr(config, "road_style_mode", 2) == 3
                         if "custom_mappings" in file_data:
                             setattr(config, "custom_mappings", file_data["custom_mappings"])
                             mappings_geladen = True
+                    else:
+                        raise ValueError("Die Konfiguration muss ein JSON-Objekt sein.")
             except Exception as read_err:
                 QgsMessageLog.logMessage(
                     f"Konnte custom_mappings nicht aus style_config.json lesen: {read_err}",
                     "Style Auto Plugin", Qgis.MessageLevel.Warning)
+                self.push_message("Optionen konnten nicht geladen werden: {0}".format(read_err),
+                                  level=Qgis.MessageLevel.Critical, duration=8)
+                self._timing_start = None
+                return
 
 
         # Set fallback mappings if the JSON file was empty
-        if not mappings_geladen or not getattr(config, "custom_mappings", None):
+        if options_only:
+            if not mappings_geladen:
+                config.custom_mappings = []
+        elif not mappings_geladen:
             config.custom_mappings = [
                 {"active": True, "geom": "Line", "value": "motorway", "style": "autobahn", "label": "Automobilbahn"},
                 {"active": True, "geom": "Line", "value": "tertiary", "style": "nebenstrasse", "label": "Nebenstraße"},
@@ -424,4 +440,3 @@ class StyleAutoPlugin:
 
         self._ensure_default_single_symbol_mappings()
         style.importXml(xml_path)
-

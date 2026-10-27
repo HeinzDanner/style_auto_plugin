@@ -1,7 +1,10 @@
+import json
+
 from qgis.PyQt.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QCheckBox,
                                  QComboBox, QLabel, QPushButton, QScrollArea,
-                                 QWidget, QGroupBox, QLineEdit, QRadioButton, QButtonGroup)
-from qgis.PyQt.QtCore import Qt, QLocale,QCoreApplication
+                                 QWidget, QGroupBox, QLineEdit, QRadioButton, QButtonGroup,
+                                 QFileDialog, QMessageBox)
+from qgis.PyQt.QtCore import Qt, QLocale, QCoreApplication, QSaveFile, QIODevice
 from qgis.core import QgsSettings, QgsMessageLog, Qgis, QgsProject, QgsStyle
 from .style_engine import style_engine
 
@@ -21,6 +24,7 @@ class StyleAutoPluginDialog(QDialog):
         self.setMinimumHeight(550)
 
         self.config = active_config if active_config is not None else {}
+        self._loading_config = True
         self.style_engine = style_engine
         self.style_engine.config = self.config  # Pass through the loaded configuration.
 
@@ -41,7 +45,8 @@ class StyleAutoPluginDialog(QDialog):
         self.mode_combo.addItems([
             self.tr("Mode 0: Pure Base Styling (JSON Rules)"),
             self.tr("Mode 1: Pure Custom Single Styling (GUI List)"),
-            self.tr("Mode 2: Combined Styling (Base + GUI List)")
+            self.tr("Mode 2: Combined Styling (Base + GUI List)"),
+            self.tr("Mode 3: Options Only (Keep Existing Style)")
         ])
 
         # --- Fix: capture the current mode when opening the dialog ---
@@ -59,12 +64,12 @@ class StyleAutoPluginDialog(QDialog):
             QLabel("----------------------------------------------------------------------------------------", self))
 
         # --- GRUPPE 1 & 2 VERSCHMOLZEN: REINE KARTOGRAFISCHE EFFEKTE ---
-        englischer_text = "Cartographic Options (active in Mode 1 and Mode 2)"
+        englischer_text = "Cartographic Options (Modes 1, 2 and 3)"
         self.group_effects = QGroupBox(self.tr(englischer_text), self)
 
         # Safety net: translation fallback for testers
         if self.group_effects.title() == englischer_text:
-            self.group_effects.setTitle("Kartografische Optionen (aktiv in Modus 1 und Modus 2)")
+            self.group_effects.setTitle("Kartografische Optionen (Modus 1, 2 und 3)")
 
         effects_layout = QVBoxLayout(self.group_effects)
 
@@ -118,18 +123,21 @@ class StyleAutoPluginDialog(QDialog):
 
         # Add the widget group to the main view
         self.main_layout.addWidget(self.group_effects)
+        options_hint = QLabel(self.tr(
+            "Mode 3: Apply options and GUI mappings without loading a base style. Use S to apply."), self)
+        options_hint.setWordWrap(True)
+        self.main_layout.addWidget(options_hint)
 
         # ==============================================================================
-        # --- Hidden engine housekeeping: force these to True in the background ---
+        # --- Hidden engine settings retained for configuration round trips ---
         # ==============================================================================
-        # Declare building base in memory, set it to True, and hide it completely
+        # Building and point feature switches are not exposed in the dialog.
         self.cb_building_base = QCheckBox(self)
-        self.cb_building_base.setChecked(True)
+        self.cb_building_base.setChecked(self.config.get("enable_advanced_building_features", True))
         self.cb_building_base.hide()
 
-        # Declare point base in memory, set it to True, and hide it completely
         self.cb_point_base = QCheckBox(self)
-        self.cb_point_base.setChecked(True)
+        self.cb_point_base.setChecked(self.config.get("enable_advanced_point_features", True))
         self.cb_point_base.hide()
         # ==============================================================================
 
@@ -186,14 +194,7 @@ class StyleAutoPluginDialog(QDialog):
         self.mapping_rows = []
         self.radio_group = QButtonGroup(self)
 
-        # ==============================================================================
-        # Prepare and extend default values for custom single-symbol mappings
-        # ==============================================================================
-        import os
-        dialog_dir = os.path.dirname(os.path.abspath(__file__))
-        xml_test_pfad = os.path.join(dialog_dir, "styles", "style_symbols.xml")
-
-        # The five fixed defaults that should always be present
+        # Initial mappings for a new configuration.
         hardcoded_defaults = [
             {"active": True, "geom": "Line", "value": "motorway", "style": "autobahn", "label": "Autobahn"},
             {"active": True, "geom": "Line", "value": "tertiary", "style": "nebenstrasse", "label": "Nebenstraße"},
@@ -203,46 +204,29 @@ class StyleAutoPluginDialog(QDialog):
             {"active": True, "geom": "Point", "value": "hospital", "style": "hospital.svg", "label": "Krankenhaus"}
         ]
 
-        # Load the current state from config.json
-        initial_entries = self.config.get("custom_mappings", [])
-
-        # Only add missing rows if the test XML exists:
-        if os.path.exists(xml_test_pfad):
-            if not isinstance(initial_entries, list) or len(initial_entries) == 0:
-                initial_entries = hardcoded_defaults
-            else:
-                # Collect the OSM values that are already present in the config
-                aktuell_vorhandene_values = []
-                for m in initial_entries:
-                    if isinstance(m, dict) and "value" in m:
-                        # Normalize aggressively for whitespace and letter case
-                        aktuell_vorhandene_values.append(str(m["value"]).strip().lower())
-
-                # Now loop through the five defaults and add only what is truly missing
-                for standard_zeile in hardcoded_defaults:
-                    such_value = str(standard_zeile["value"]).strip().lower()
-
-                    # If the OSM value (for example 'tertiary') is not yet in the list:
-                    if such_value not in aktuell_vorhandene_values:
-                        initial_entries.append(standard_zeile)
-
-            self.config["custom_mappings"] = initial_entries
-        else:
-            # Fallback: if no XML is available, keep the last user state as-is
-            if not isinstance(initial_entries, list) or len(initial_entries) == 0:
-                initial_entries = hardcoded_defaults
+        # Defaults are only for a new configuration, not an explicitly empty list.
+        initial_entries = self.config.get("custom_mappings", hardcoded_defaults)
 
         for entry in initial_entries:
             self.create_row_widget(entry)
+
+        file_buttons = QHBoxLayout()
+        self.btn_save = QPushButton(self.tr("Save configuration..."), self)
+        self.btn_save.clicked.connect(self.save_configuration)
+        file_buttons.addWidget(self.btn_save)
+        self.btn_load = QPushButton(self.tr("Load configuration..."), self)
+        self.btn_load.clicked.connect(self.load_configuration)
+        file_buttons.addWidget(self.btn_load)
+        self.main_layout.addLayout(file_buttons)
 
         self.btn_close = QPushButton(self.tr("Close"), self)
         self.btn_close.clicked.connect(self.accept)
         self.main_layout.addWidget(self.btn_close)
 
-        self.cb_point_base.setChecked(True)
         self.cb_point_base.hide()
 
         # Save once initially so the structure exists in memory
+        self._loading_config = False
         self.auto_save_settings()
 
     def create_row_widget(self, data=None):
@@ -267,7 +251,6 @@ class StyleAutoPluginDialog(QDialog):
             in_library = style_name in style_library.symbolNames()
             if not in_project and not in_library:
                 style_exists = False
-                is_active = False
 
         cb_active = QCheckBox(row_container)
         cb_active.setFixedWidth(45)
@@ -300,12 +283,7 @@ class StyleAutoPluginDialog(QDialog):
         row_layout.addWidget(edit_label)
 
         if not style_exists:
-            cb_active.setEnabled(False)
-            combo_geom.setEnabled(False)
-            edit_value.setEnabled(False)
-            edit_style.setEnabled(False)
-            edit_label.setEnabled(False)
-            row_container.setToolTip(self.tr(f"Style '{style_name}' missing in QGIS! Row locked."))
+            row_container.setToolTip(self.tr("Referenced symbol is missing in QGIS. Import it or edit the style name."))
 
         row_data = {
             "container": row_container, "radio": radio_select, "active": cb_active,
@@ -332,6 +310,8 @@ class StyleAutoPluginDialog(QDialog):
             self.auto_save_settings()
 
     def auto_save_settings(self):
+        if self._loading_config:
+            return
         if hasattr(self, 'style_engine') and self.style_engine:
             self.style_engine.enable_building_labels = self.cb_building_labels.isChecked()
             self.style_engine.enable_labels = self.cb_road_labels.isChecked()
@@ -374,9 +354,108 @@ class StyleAutoPluginDialog(QDialog):
             })
         self.config["custom_mappings"] = extracted_mappings
 
+    def save_configuration(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, self.tr("Save configuration..."), "style_auto_config.json", "JSON (*.json)")
+        if not path:
+            return
+        self.auto_save_settings()
+        output = QSaveFile(path)
+        try:
+            payload = json.dumps(self.config, ensure_ascii=False, indent=4, allow_nan=False).encode("utf-8")
+            if not output.open(QIODevice.OpenModeFlag.WriteOnly):
+                raise OSError(output.errorString())
+            if output.write(payload) != len(payload):
+                raise OSError(output.errorString())
+            if not output.commit():
+                raise OSError(output.errorString())
+        except (OSError, TypeError, ValueError) as error:
+            output.cancelWriting()
+            QMessageBox.warning(self, self.tr("Configuration error"), str(error))
+
+    @staticmethod
+    def _validate_configuration(data):
+        if not isinstance(data, dict):
+            raise ValueError("Die Konfiguration muss ein JSON-Objekt sein.")
+        mode = data.get("road_style_mode", 2)
+        if type(mode) is not int or mode not in range(4):
+            raise ValueError("road_style_mode muss zwischen 0 und 3 liegen.")
+        for key, value in data.items():
+            if (key.startswith("enable_") or key in (
+                    "compactlegend", "usefallbackstyleforunknownvalues", "allownamemismatchfallback")
+                    ) and not isinstance(value, bool):
+                raise ValueError("{0} muss true oder false sein.".format(key))
+        mappings = data.get("custom_mappings", [])
+        if not isinstance(mappings, list):
+            raise ValueError("custom_mappings muss eine Liste sein.")
+        for index, entry in enumerate(mappings, 1):
+            if (not isinstance(entry, dict)
+                    or not isinstance(entry.get("active", True), bool)
+                    or entry.get("geom") not in ("Point", "Line", "Polygon")
+                    or any(not isinstance(entry.get(key), str) for key in ("value", "style", "label"))):
+                raise ValueError("Ungültige Einzelstil-Zuordnung in Zeile {0}.".format(index))
+        for key in ("style_profiles", "layerrulesets"):
+            if key in data and (not isinstance(data[key], list)
+                                or any(not isinstance(entry, dict) for entry in data[key])):
+                raise ValueError("{0} muss eine Liste von Objekten sein.".format(key))
+        from .style_config import _parse_plugin_config
+        _parse_plugin_config(data)
+
+    def load_configuration(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, self.tr("Load configuration..."), "", "JSON (*.json)")
+        if not path:
+            return
+        try:
+            with open(path, encoding="utf-8-sig") as handle:
+                data = json.load(handle)
+            self._validate_configuration(data)
+        except (OSError, UnicodeError, ValueError, TypeError, AttributeError) as error:
+            QMessageBox.warning(self, self.tr("Configuration error"), str(error))
+            return
+
+        self._loading_config = True
+        try:
+            self.config.clear()
+            self.config.update(data)
+            self.mode_combo.setCurrentIndex(data.get("road_style_mode", 2))
+            for key, checkbox in (
+                ("enable_advanced_road_features", self.cb_road_base),
+                ("enable_advanced_building_features", self.cb_building_base),
+                ("enable_advanced_point_features", self.cb_point_base),
+                ("enable_road_labels", self.cb_road_labels),
+                ("enable_building_edge_smoothing", self.cb_building_smoothing),
+                ("enable_building_drop_shadow", self.cb_building_shadow),
+                ("enable_building_labels", self.cb_building_labels),
+                ("enable_landuse_labels", self.cb_landuse_labels),
+            ):
+                checkbox.setChecked(data.get(key, True))
+            for row in self.mapping_rows:
+                row["container"].hide()
+                self.radio_group.removeButton(row["radio"])
+                self.scroll_layout.removeWidget(row["container"])
+                row["container"].deleteLater()
+            self.mapping_rows.clear()
+            for entry in data.get("custom_mappings", []):
+                self.create_row_widget(entry)
+                self.mapping_rows[-1]["container"].show()
+            self.scroll_layout.activate()
+            self.scroll_widget.adjustSize()
+            self.scroll_area.verticalScrollBar().setValue(0)
+        finally:
+            self._loading_config = False
+        self.auto_save_settings()
+
     def tr(self, message):
         # Use the in-memory switch directly in this dialog so no file access can block it.
         de_dict = {
+            "Save configuration...": "Speichern ...",
+            "Load configuration...": "Laden ...",
+            "Configuration error": "Konfigurationsfehler",
+            "Referenced symbol is missing in QGIS. Import it or edit the style name.":
+                "Referenziertes Symbol fehlt in QGIS. Bitte importieren oder den Stilnamen anpassen.",
+            "Mode 3: Apply options and GUI mappings without loading a base style. Use S to apply.":
+                "Modus 3: Optionen und GUI-Zuordnungen ohne Basisstyling anwenden. Mit S ausführen.",
             "Style Auto Plugin - Configuration": "Style Auto Plugin - Konfiguration",
             "Global Styling Mode (All Layers):": "Globaler Styling-Modus (Alle Layer):",
             "Mode 0: Pure Base Styling (JSON Rules)": "Modus 0: Reines Basis-Styling (JSON-Regeln)",
@@ -386,7 +465,8 @@ class StyleAutoPluginDialog(QDialog):
             "Enable Base Roads Styling": "Basis-Straßenstyling aktivieren",
             "Enable Base Buildings Styling": "Basis-Gebäudestyling aktivieren",
             "Enable Base Points Styling (POIs)": "Basis-Punktstyling (POIs) aktivieren",
-            "Cartographic Options (active in Mode 1 and Mode 2)": "Kartografische Optionen (aktiv in Modus 1 und Modus 2)",
+            "Cartographic Options (Modes 1, 2 and 3)": "Kartografische Optionen (Modus 1, 2 und 3)",
+            "Mode 3: Options Only (Keep Existing Style)": "Modus 3: Nur Optionen (vorhandenen Stil beibehalten)",
             "Show Road Names (Density-Optimized)": "Straßennamen anzeigen (Dichte-optimiert)",
             "Cartographic Options": "Kartografische Optionen",
             "Enable Building Edge Smoothing": "Gebäudekanten-Glättung aktivieren",

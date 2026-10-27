@@ -1,7 +1,7 @@
 import os
 import qgis.utils
 
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QPointF
 from qgis.PyQt.QtGui import QColor, QFont, QPainter
 from qgis.core import (
     Qgis,  # --- FIX: Import the core enum for log levels (Critical, Warning, Info). ---
@@ -21,6 +21,10 @@ from qgis.core import (
     QgsEffectStack,
     # --- Renderer ---
     QgsCategorizedSymbolRenderer,
+    QgsSingleSymbolRenderer,
+    QgsRenderContext,
+    QgsMapLayerLegendUtils,
+    QgsVectorLayerUtils,
     QgsRendererCategory,
     # --- Labeling ---
     QgsPalLayerSettings,
@@ -740,7 +744,7 @@ class StyleEngine:
         symbol = QgsFillSymbol.createSimple({
             "color": style_def.color,
             "outline_width": str(style_def.width),
-            "outline_style": style_def.penstyle,
+            "outline_style": "no" if style_def.penstyle == "nopen" else style_def.penstyle,
         })
         self._symbol_cache[key] = symbol
         return symbol.clone()
@@ -1092,6 +1096,293 @@ class StyleEngine:
             missing_values=missing_values
         )
 
+    def _is_landuse_layer(self, layer):
+        fields = layer.fields()
+        building_idx = fields.indexOf("building")
+        landuse_idx = fields.indexOf("landuse")
+        type_idx = fields.indexOf("type")
+        fclass_idx = fields.indexOf("fclass")
+        building_score = 0
+        landuse_score = 0
+        for feature in layer.getFeatures(QgsFeatureRequest().setLimit(50)):
+            if building_idx >= 0:
+                value = str(feature.attribute(building_idx)).strip().lower()
+                if value and value not in ("no", "null", "none"):
+                    building_score += 2
+            if type_idx >= 0:
+                value = str(feature.attribute(type_idx)).strip().lower()
+                if value in ("apartments", "house", "detached", "commercial", "industrial", "residential"):
+                    building_score += 2
+            if landuse_idx >= 0:
+                value = str(feature.attribute(landuse_idx)).strip().lower()
+                if value and value not in ("null", "none"):
+                    landuse_score += 2
+            if fclass_idx >= 0:
+                value = str(feature.attribute(fclass_idx)).strip().lower()
+                if value in ("forest", "park", "grass", "water", "meadow", "scrub", "heath"):
+                    landuse_score += 2
+
+        if landuse_score != building_score:
+            return landuse_score > building_score
+        name = (layer.name() or "").lower()
+        return (
+            (landuse_idx >= 0 and building_idx < 0)
+            or any(hint in name for hint in ("landuse", "water", "natural"))
+        )
+
+    def _apply_landuse_custom_symbols(self, layer, config):
+        return self._apply_custom_symbols(layer, config, "polygon")
+
+    def _restore_options_legend(self, layer):
+        node = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
+        if node is None:
+            return
+        node.removeCustomProperty("style_auto_plugin/rest_categories")
+        saved = node.customProperty("style_auto_plugin/options_legend", {})
+        if isinstance(saved, dict):
+            for key, previous in saved.items():
+                if previous["exists"]:
+                    node.setCustomProperty(key, previous["value"])
+                else:
+                    node.removeCustomProperty(key)
+        node.removeCustomProperty("style_auto_plugin/options_legend")
+
+    def bind_legend_groups(self, layers=None):
+        if layers is None:
+            layers = QgsProject.instance().mapLayers().values()
+        for layer in layers:
+            if not hasattr(layer, "renderer"):
+                continue
+            previous = getattr(layer, "_style_auto_rest_handler", None)
+            if previous is not None:
+                layer.styleChanged.disconnect(previous)
+            layer_id = layer.id()
+
+            def synchronize(layer_id=layer_id):
+                current = QgsProject.instance().mapLayer(layer_id)
+                if current is None:
+                    return
+                node = QgsProject.instance().layerTreeRoot().findLayer(current.id())
+                if node is None:
+                    return
+                group = node.customProperty("style_auto_plugin/rest_categories", {})
+                renderer = current.renderer()
+                if not group or not isinstance(renderer, QgsCategorizedSymbolRenderer):
+                    return
+                categories = renderer.categories()
+                if [str(category.value()) for category in categories] != group["values"]:
+                    return
+                checked = categories[group["representative"]].renderState()
+                if checked == group["checked"]:
+                    return
+                for index in group["indices"]:
+                    renderer.updateCategoryRenderState(index, checked)
+                group["checked"] = checked
+                node.setCustomProperty("style_auto_plugin/rest_categories", group)
+
+            layer._style_auto_rest_handler = synchronize
+            layer.styleChanged.connect(synchronize)
+
+    def bind_project_legend_groups(self, *args):
+        self.bind_legend_groups()
+
+    def _compact_options_legend(self, layer, config, geometry):
+        node = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
+        if node is None:
+            return
+        self._restore_options_legend(layer)
+        renderer = layer.renderer()
+        order = []
+        rest_index = None
+        if isinstance(renderer, QgsCategorizedSymbolRenderer):
+            values, ok = QgsVectorLayerUtils.getValues(layer, renderer.classAttribute())
+            if not ok:
+                return
+            present = {str(value).strip().lower() for value in values}
+            mappings = self._get_attr(config, "custom_mappings", default=[])
+            mapped = {
+                str(entry.get("value", "")).strip().lower()
+                for entry in mappings if isinstance(entry, dict) and entry.get("active", True)
+                and str(entry.get("geom", "")).lower() == geometry
+            } if isinstance(mappings, list) else set()
+            if geometry == "point" and not self._get_attr(config, "enable_advanced_point_features", default=True):
+                mapped = set()
+            if renderer.classAttribute() == "code":
+                mapped = {GEOFABRIK_CODE_MAP.get(value, value) for value in mapped}
+            categories = renderer.categories()
+            explicit_values = set()
+            for category in categories:
+                value = category.value()
+                explicit_values.update(str(item).strip().lower() for item in (
+                    value if isinstance(value, list) else [value]) if item not in ("", None))
+            for index, category in enumerate(categories):
+                value = category.value()
+                category_values = {str(item).strip().lower() for item in (
+                    value if isinstance(value, list) else [value])}
+                hits = category_values & present
+                if value in ("", None):
+                    hits |= present - explicit_values
+                if not hits:
+                    continue
+                if hits & mapped:
+                    order.append(index)
+                elif rest_index is None:
+                    rest_index = index
+        else:
+            rest_index = 0
+        if rest_index is not None:
+            order.append(rest_index)
+        keys = ["legend/node-order"]
+        if rest_index is not None:
+            keys.append("legend/label-{0}".format(rest_index))
+        node.setCustomProperty("style_auto_plugin/options_legend", {
+            key: {"exists": key in node.customProperties(), "value": node.customProperty(key)}
+            for key in keys
+        })
+        QgsMapLayerLegendUtils.setLegendNodeOrder(node, order)
+        if rest_index is not None:
+            QgsMapLayerLegendUtils.setLegendNodeUserLabel(node, rest_index, "Andere Werte")
+            if isinstance(renderer, QgsCategorizedSymbolRenderer):
+                node.setCustomProperty("style_auto_plugin/rest_categories", {
+                    "representative": rest_index,
+                    "indices": [index for index in range(len(categories)) if index not in order[:-1]],
+                    "values": [str(category.value()) for category in categories],
+                    "checked": categories[rest_index].renderState(),
+                })
+                self.bind_legend_groups([layer])
+
+    def _apply_custom_symbols(self, layer, config, geometry, plugin_dir=None, allow_single=False):
+        renderer = layer.renderer()
+        mappings = self._get_attr(config, "custom_mappings", default=[])
+        entries = {
+            str(entry.get("value", "")).strip().lower(): entry
+            for entry in mappings if isinstance(entry, dict)
+            and entry.get("active", True)
+            and str(entry.get("geom", "")).lower() == geometry
+        } if isinstance(mappings, list) else {}
+        if not entries:
+            return self._result(True)
+        if allow_single and isinstance(renderer, QgsSingleSymbolRenderer):
+            field_names = {
+                "line": ("fclass", "highway", "code"),
+                "polygon": ("fclass", "landuse", "building", "type", "code"),
+                "point": ("fclass", "amenity", "code"),
+            }[geometry]
+            available_fields = [name for name in field_names if layer.fields().indexOf(name) >= 0]
+            if not available_fields:
+                return self._result(False, "Kein Zuordnungsfeld für GUI-Symbole gefunden.", level="warning")
+            values_by_field = {
+                name: layer.uniqueValues(layer.fields().indexOf(name)) for name in available_fields
+            }
+            def matching_count(name):
+                keys = {GEOFABRIK_CODE_MAP.get(value, value) if name == "code" else value for value in entries}
+                return sum(str(value).strip().lower() in keys for value in values_by_field[name])
+
+            field_name = max(available_fields, key=matching_count)
+            if not matching_count(field_name):
+                return self._result(True)
+            categories = [
+                QgsRendererCategory(value, renderer.symbol().clone(), str(value))
+                for value in sorted(values_by_field[field_name], key=str)
+            ]
+            if not any(category.value() == "" for category in categories):
+                categories.append(QgsRendererCategory("", renderer.symbol().clone(), "Andere Werte"))
+            renderer = QgsCategorizedSymbolRenderer(field_name, categories)
+        if not isinstance(renderer, QgsCategorizedSymbolRenderer):
+            return self._result(False, "GUI-Symbole benötigen einen Einzel- oder kategorisierten Stil.",
+                                level="warning")
+
+        renderer = renderer.clone()
+        present = None
+        if allow_single:
+            values, ok = QgsVectorLayerUtils.getValues(layer, renderer.classAttribute())
+            if not ok:
+                return self._result(False, "Das Zuordnungsfeld des vorhandenen Stils ist ungültig.",
+                                    level="warning")
+            present = {str(value).strip().lower() for value in values}
+        if renderer.classAttribute() == "code":
+            entries = {GEOFABRIK_CODE_MAP.get(value, value): entry for value, entry in entries.items()}
+        style = QgsStyle.defaultStyle()
+        project_style = QgsProject.instance().styleSettings().projectStyle()
+        replacements = []
+        for index, category in enumerate(renderer.categories()):
+            category_value = str(category.value()).strip().lower()
+            if present is not None and (category_value not in present or not category.renderState()):
+                continue
+            entry = entries.get(category_value)
+            if entry is None:
+                continue
+            name = entry.get("style", "")
+            if geometry == "point" and str(name).lower().endswith(".svg"):
+                svg_path = self.resolve_qml_path(plugin_dir, name)
+                if not os.path.isfile(svg_path or ""):
+                    svg_path = os.path.join(plugin_dir or "", "styles", name)
+                if not os.path.isfile(svg_path):
+                    svg_path = os.path.join(plugin_dir or "", "styles", "icons", name)
+                if not os.path.isfile(svg_path):
+                    return self._result(False, "SVG-Datei nicht gefunden: {0}".format(name), level="warning")
+                symbol = QgsMarkerSymbol()
+                symbol.changeSymbolLayer(0, QgsSvgMarkerSymbolLayer(svg_path, 5.0))
+            else:
+                symbol = project_style.symbol(name) or style.symbol(name)
+            if symbol is None or category.symbol() is None or symbol.type() != category.symbol().type():
+                return self._result(
+                    False, "Kein passendes Symbol für GUI-Zuordnung '{0}': '{1}'.".format(
+                        entry.get("value", ""), name), level="warning"
+                )
+            replacements.append((index, symbol, entry.get("label", "")))
+        for index, symbol, label in replacements:
+            renderer.updateCategorySymbol(index, symbol)
+            if label:
+                renderer.updateCategoryLabel(index, label)
+        if replacements:
+            layer.setRenderer(renderer.clone())
+        return self._result(True)
+
+    def apply_options(self, layer, config, plugin_dir=None):
+        if layer is None:
+            return self._result(False, "Kein Layer übergeben.", level="warning")
+        geometry = self.get_layer_geometry_type_name(layer)
+        renderer = layer.renderer()
+        if geometry not in ("line", "polygon", "point") or not isinstance(
+                renderer, (QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer)):
+            return self._result(False, "Nur Optionen: unterstützt werden Einzel- und kategorisierte Vektorstile; "
+                                "der vorhandene Stil bleibt unverändert.", level="warning")
+
+        self.sync_runtime_bools_from_config(config)
+        point_features = bool(self._get_attr(config, "enable_advanced_point_features", default=True))
+        if geometry != "point" or point_features:
+            result = self._apply_custom_symbols(layer, config, geometry, plugin_dir, allow_single=True)
+            if not result["success"]:
+                return result
+
+        # Custom replacements have already been validated and applied without base styling.
+        effects_config = {
+            "custom_mappings": [],
+            "enable_advanced_road_features": self._get_attr(
+                config, "enable_advanced_road_features", default=True),
+            "enable_advanced_building_features": self._get_attr(
+                config, "enable_advanced_building_features", default=True),
+        }
+        if geometry == "line":
+            self.apply_road_symbol_mapping(layer, config=effects_config,
+                                           enable_labels=self._get_attr(config, "enable_road_labels", default=True),
+                                           options_only=True)
+        elif geometry == "polygon":
+            if self._is_landuse_layer(layer):
+                self.apply_landuse_advanced_features(
+                    layer, enable_labels=self._get_attr(config, "enable_landuse_labels", default=True))
+            else:
+                self.apply_building_symbol_mapping(
+                    layer, config=effects_config, options_only=True,
+                    enable_smoothing=self._get_attr(config, "enable_building_edge_smoothing", default=True),
+                    enable_shadow=self._get_attr(config, "enable_building_drop_shadow", default=True),
+                    enable_labels=self.enable_building_labels)
+        self._compact_options_legend(layer, config, geometry)
+        layer.setRenderer(layer.renderer().clone())
+        layer.triggerRepaint()
+        return self._result(True, "Optionen auf vorhandenen Stil angewendet (ohne Basisstyling).")
+
     def apply_best_style(self, layer, config, plugin_dir=None):
         if layer is None:
             return self._result(False, "Kein Layer übergeben.", level="warning")
@@ -1099,6 +1390,7 @@ class StyleEngine:
         # ==============================================================================
         # ==============================================================================
         geom_type = self.get_layer_geometry_type_name(layer)
+        is_landuse = geom_type == "polygon" and self._is_landuse_layer(layer)
 
         # ==============================================================================
         # Determine the mode and cartographic booleans once (previously duplicated here)
@@ -1109,6 +1401,10 @@ class StyleEngine:
             mode = int(self._get_attr(config, "road_style_mode", default=2))
         except (ValueError, TypeError):
             mode = 2
+
+        if mode == 3:
+            return self.apply_options(layer, config, plugin_dir)
+        self._restore_options_legend(layer)
 
         self.sync_runtime_bools_from_config(config)
 
@@ -1130,10 +1426,14 @@ class StyleEngine:
             result = self._execute_base_styling(layer, config, plugin_dir)
 
             # 2. Apply mode-0-specific corrections/constraints
-            if geom_type == "line":
+            if is_landuse and result.get("success"):
+                layer.setLabelsEnabled(False)
+                layer.setLabeling(None)
+                layer.triggerRepaint()
+            elif geom_type == "line":
                 result = {"success": True, "message": "Basis-Straßen-Styling angewendet (Modus 0)."}
 
-            elif geom_type == "polygon" and enable_building_features:
+            elif geom_type == "polygon" and enable_building_features and not is_landuse:
                 if layer.fields().indexOf("building") >= 0 or layer.fields().indexOf(
                         "type") >= 0 or layer.fields().indexOf("fclass") >= 0:
                     self.apply_building_symbol_mapping(
@@ -1165,65 +1465,16 @@ class StyleEngine:
 
             elif geom_type == "polygon":
 
-                # --- Semantic scoring (identical to mode 2) ---
-
-                building_score = 0
-
-                landuse_score = 0
-
-                # Scan the first 50 features for best performance
-                request = QgsFeatureRequest().setLimit(50)
-
-                idx_building = layer.fields().indexOf("building")
-
-                idx_type = layer.fields().indexOf("type")
-
-                idx_landuse = layer.fields().indexOf("landuse")
-
-                idx_fclass = layer.fields().indexOf("fclass")
-
-                for feature in layer.getFeatures(request):
-
-                    # Check building indicators
-
-                    if idx_building >= 0 and feature.attribute(idx_building):
-
-                        val = str(feature.attribute(idx_building)).strip().lower()
-
-                        if val and val != "no" and val != "null":
-                            building_score += 2
-
-                    if idx_type >= 0 and feature.attribute(idx_type):
-
-                        val = str(feature.attribute(idx_type)).strip().lower()
-
-                        if val in ["apartments", "house", "detached", "commercial", "industrial", "residential"]:
-                            building_score += 2
-
-                    # Check area indicators (landuse)
-
-                    if idx_landuse >= 0 and feature.attribute(idx_landuse):
-
-                        val = str(feature.attribute(idx_landuse)).strip().lower()
-
-                        if val and val != "null":
-                            landuse_score += 2
-
-                    if idx_fclass >= 0 and feature.attribute(idx_fclass):
-
-                        val = str(feature.attribute(idx_fclass)).strip().lower()
-
-                        if val in ["forest", "park", "grass", "water", "meadow", "commercial", "industrial"]:
-                            landuse_score += 1
-
-                # --- Decision ---
-
-                if landuse_score > building_score or (idx_landuse >= 0 and idx_building < 0):
-
-                    # FIX: "apply_landuse_symbol_mapping" never existed as a method,
-                    # which made the landuse toggle (enable_landuse_labels) ineffective
-                    # in mode 1. Reuse the same labeling logic as in mode 2.
+                if is_landuse:
+                    result = self._execute_base_styling(layer, config, plugin_dir)
+                    if not result.get("success"):
+                        return result
+                    custom_result = self._apply_landuse_custom_symbols(layer, config)
+                    if not custom_result["success"]:
+                        return custom_result
                     self.apply_landuse_advanced_features(layer, enable_labels=enable_landuse_labels)
+                    self._compact_options_legend(layer, config, "polygon")
+                    layer.setRenderer(layer.renderer().clone())
 
                     result = {"success": True, "message": "Reines Flächen-Einzelstyling angewendet (Modus 1)."}
 
@@ -1301,85 +1552,12 @@ class StyleEngine:
 
             elif geom_type == "polygon":
 
-                # ==============================================================================
-
-                # Detection logic: inspect the attribute table directly and scan values
-
-                # ==============================================================================
-
-                building_score = 0
-
-                landuse_score = 0
-
-                # Limit the scan to 50 features for best QGIS performance
-
-                request = QgsFeatureRequest().setLimit(50)
-
-                idx_building = layer.fields().indexOf("building")
-
-                idx_type = layer.fields().indexOf("type")
-
-                idx_landuse = layer.fields().indexOf("landuse")
-
-                idx_fclass = layer.fields().indexOf("fclass")
-
-                # Loop through the real table entries
-
-                for feature in layer.getFeatures(request):
-
-                    # 1. Count building values in the table
-
-                    if idx_building >= 0 and feature.attribute(idx_building):
-
-                        val = str(feature.attribute(idx_building)).strip().lower()
-
-                        if val and val not in ("no", "null", "none"):
-                            building_score += 2
-
-                    if idx_type >= 0 and feature.attribute(idx_type):
-
-                        val = str(feature.attribute(idx_type)).strip().lower()
-
-                        if val in ["apartments", "house", "detached", "commercial", "industrial", "residential"]:
-                            building_score += 2
-
-                    # 2. Count area values (landuse) in the table
-
-                    if idx_landuse >= 0 and feature.attribute(idx_landuse):
-
-                        val = str(feature.attribute(idx_landuse)).strip().lower()
-
-                        if val and val != "null":
-                            landuse_score += 2
-
-                    if idx_fclass >= 0 and feature.attribute(idx_fclass):
-
-                        val = str(feature.attribute(idx_fclass)).strip().lower()
-
-                        if val in ["forest", "park", "grass", "water", "meadow", "scrub", "heath"]:
-                            landuse_score += 2
-
-                # Safety fallback based on the layer name if the table was empty (0 vs. 0)
-
-                layer_name_lower = (layer.name() or "").lower()
-
-                if building_score == 0 and landuse_score == 0:
-
-                    if "landuse" in layer_name_lower or "water" in layer_name_lower or "natural" in layer_name_lower:
-
-                        landuse_score = 5
-
-                    else:
-
-                        building_score = 5
-
-                # ==============================================================================
-
-                # Evaluate using the actual table-based scores
-
-                # ==============================================================================
-
-                if landuse_score > building_score:
+                if is_landuse:
+                    if not result.get("success"):
+                        return result
+                    custom_result = self._apply_landuse_custom_symbols(layer, config)
+                    if not custom_result["success"]:
+                        return custom_result
 
                     # Clearly a landuse/area layer based on the table values
 
@@ -1479,7 +1657,8 @@ class StyleEngine:
 
         return self.apply_layer_ruleset_style(layer, layerruleset, detected_field_name=detected_ruleset_field)
 
-    def apply_road_symbol_mapping(self, layer, config=None, reines_einzelstyling=False, enable_labels=True):
+    def apply_road_symbol_mapping(self, layer, config=None, reines_einzelstyling=False, enable_labels=True,
+                                  options_only=False):
         if not layer:
             return False
 
@@ -1695,12 +1874,16 @@ class StyleEngine:
         active_renderer = layer.renderer()
         if active_renderer:
             # 1. Enable symbol levels so layers do not cut across each other
+            if road_base_aktiv or options_only:
+                active_renderer.setUsingSymbolLevels(bool(road_base_aktiv))
             if road_base_aktiv:
-                active_renderer.setUsingSymbolLevels(True)
+                if options_only:
+                    for symbol in active_renderer.symbols(QgsRenderContext()):
+                        _optimize_line_caps_and_joins(symbol)
 
         # Optional: if motorways should always appear on top,
         # this QGIS setting helps them cross bridges cleanly
-        if hasattr(layer, "setFeatureBlendMode"):
+        if not options_only and hasattr(layer, "setFeatureBlendMode"):
             layer.setFeatureBlendMode(QT_NORMAL_COMPOSITION_MODE)
 
         # ==============================================================================
@@ -1759,17 +1942,24 @@ class StyleEngine:
         return True
 
     def apply_building_symbol_mapping(self, layer, config=None, enable_smoothing=True, enable_shadow=True,
-                                      reines_einzelstyling=False, enable_labels=True, ignore_user_styles=False):
+                                      reines_einzelstyling=False, enable_labels=True, ignore_user_styles=False,
+                                      options_only=False):
         if not layer:
             return False
 
         def _apply_building_smoothing(symbol):
-            if not symbol or not enable_smoothing:
+            if not symbol or (not enable_smoothing and not options_only):
                 return
 
             for i in range(symbol.symbolLayerCount()):
                 sl = symbol.symbolLayer(i)
+                if (options_only and hasattr(sl, "offset") and hasattr(sl, "strokeStyle")
+                        and sl.offset() == QPointF(0.6, 0.6) and sl.strokeStyle() == QT_NO_PEN):
+                    continue
                 if hasattr(sl, "fillColor") and hasattr(sl, "setStrokeColor") and hasattr(sl, "setStrokeWidth"):
+                    if options_only and not enable_smoothing:
+                        sl.setStrokeStyle(QT_NO_PEN)
+                        continue
                     fill_color = sl.fillColor()
                     if fill_color and fill_color.isValid():
                         sl.setStrokeColor(fill_color.darker(125))
@@ -1804,6 +1994,8 @@ class StyleEngine:
 
         def _finalize_building_symbol(symbol):
             if not symbol:
+                return symbol
+            if options_only and not self._get_attr(config, "enable_advanced_building_features", default=True):
                 return symbol
 
             _apply_building_smoothing(symbol)
@@ -1911,7 +2103,10 @@ class StyleEngine:
         if idx_dbg >= 0:
             unique_vals = layer.uniqueValues(idx_dbg)
 
-        if reines_einzelstyling or renderer.type() != "categorizedSymbol":
+        if options_only:
+            for symbol in renderer.symbols(QgsRenderContext()):
+                _finalize_building_symbol(symbol)
+        elif reines_einzelstyling or renderer.type() != "categorizedSymbol":
             updated_categories = []
             erstellte_labels = set()
             for val, cfg in field_mapping.items():
@@ -2078,10 +2273,10 @@ class StyleEngine:
         # Shared finalization and labels
         # ------------------------------------------------------------------
         active_renderer = layer.renderer()
-        if active_renderer and hasattr(active_renderer, "setUsingSymbolLevels"):
+        if not options_only and active_renderer and hasattr(active_renderer, "setUsingSymbolLevels"):
             active_renderer.setUsingSymbolLevels(True)
 
-        if hasattr(layer, "setFeatureBlendMode"):
+        if not options_only and hasattr(layer, "setFeatureBlendMode"):
             layer.setFeatureBlendMode(QT_NORMAL_COMPOSITION_MODE)
 
         # ==============================================================================

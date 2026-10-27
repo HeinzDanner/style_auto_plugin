@@ -155,3 +155,82 @@ def test_run_defaults_advanced_features_to_true_without_json_keys(plugin_with_is
     assert config.enable_advanced_road_features is True
     assert config.enable_advanced_building_features is True
     assert config.enable_advanced_point_features is True
+
+
+@pytest.mark.parametrize("mappings", [[], [{"geom": "Line", "value": "test", "style": "my_style"}]])
+def test_options_action_uses_saved_settings_without_base_styling(plugin_with_isolated_config, mappings):
+    import os
+
+    plugin = plugin_with_isolated_config
+    with open(os.path.join(plugin.plugin_dir, "style_config.json"), "w", encoding="utf-8") as handle:
+        json.dump({"custom_mappings": mappings, "road_style_mode": 3,
+                   "enable_road_labels": False}, handle)
+    recorded = {}
+
+    def apply_options(layer, config, plugin_dir=None):
+        recorded["config"] = config
+        return {"success": True, "message": "ok"}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Options action called full styling")
+
+    plugin.engine.apply_options = apply_options
+    plugin.engine._execute_base_styling = forbidden
+    from tests.conftest import make_line_layer
+    plugin.layer_combo = _FakeLayerCombo(make_line_layer())
+    plugin.run()
+    assert recorded["config"].custom_mappings == mappings
+    assert recorded["config"].enable_road_labels is False
+
+
+def test_options_action_rejects_invalid_saved_options(plugin_with_isolated_config):
+    import os
+
+    plugin = plugin_with_isolated_config
+    with open(os.path.join(plugin.plugin_dir, "style_config.json"), "w", encoding="utf-8") as handle:
+        handle.write("{invalid")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid options must not be applied")
+
+    plugin.engine.apply_options = forbidden
+    plugin.layer_combo = _FakeLayerCombo(object())
+    plugin.run()
+    assert plugin.iface.messageBar().messages
+
+
+def test_toolbar_keeps_only_style_and_config_actions(plugin_with_isolated_config, monkeypatch):
+    from qgis.PyQt.QtWidgets import QMainWindow
+
+    plugin = plugin_with_isolated_config
+    window = QMainWindow()
+    menu_actions = []
+    calls = []
+    plugin.iface = types.SimpleNamespace(
+        mainWindow=lambda: window,
+        addToolBar=window.addToolBar,
+        currentLayerChanged=_FakeSignal(),
+        addPluginToMenu=lambda menu, action: menu_actions.append(action),
+        removePluginMenu=lambda menu, action: menu_actions.remove(action),
+    )
+    monkeypatch.setattr(plugin, "import_missing_single_symbols_from_xml", lambda: None)
+    monkeypatch.setattr(plugin, "run", lambda: calls.append("style"))
+    plugin.initGui()
+    try:
+        assert [action.text() for action in menu_actions] == ["S", "C"]
+        plugin.action.trigger()
+        assert calls == ["style"]
+    finally:
+        plugin.unload()
+        window.close()
+    assert not menu_actions
+
+
+def test_style_action_preserves_explicit_empty_mapping_list(plugin_with_isolated_config):
+    import os
+
+    plugin = plugin_with_isolated_config
+    with open(os.path.join(plugin.plugin_dir, "style_config.json"), "w", encoding="utf-8") as handle:
+        json.dump({"custom_mappings": [], "road_style_mode": 1}, handle)
+    config = _run_with_recorded_config(plugin, object())
+    assert config.custom_mappings == []

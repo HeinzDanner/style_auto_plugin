@@ -5,6 +5,7 @@
 #
 #   "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
 import types
+import pytest
 
 from tests.conftest import add_feature, make_line_layer, make_point_layer, make_polygon_layer
 
@@ -30,6 +31,26 @@ def _simple_config(**overrides):
     }
     base.update(overrides)
     return base
+
+
+def _landuse_config(**overrides):
+    from style_config import FieldRuleSet, LayerRuleSet, LineStyleDef, MatchConfig, ValueRule
+
+    config = _simple_config(**overrides)
+    config["layerrulesets"] = [
+        LayerRuleSet(
+            match=MatchConfig(geometry_type="polygon", field_hints=["fclass"]),
+            fieldrulesets=[FieldRuleSet(
+                field_name="fclass",
+                rules=[
+                    ValueRule(value=value, label=value, style=LineStyleDef(
+                        color=color, width=0.0, penstyle="nopen"))
+                    for value, color in (("forest", "#add19e"), ("residential", "#f2eae2"))
+                ],
+            )],
+        )
+    ]
+    return types.SimpleNamespace(**config)
 
 
 # ----------------------------------------------------------------------
@@ -231,19 +252,15 @@ def test_mode1_building_labels_follow_only_their_own_toggle(engine, symbols_load
 
 
 # ----------------------------------------------------------------------
-# apply_best_style: mode 1 - landuse polygons (regression test for the bug fix)
-#
-# Previously, the code called a non-existent method named
-# "apply_landuse_symbol_mapping" auf. Der hasattr()-Check war deshalb immer
-# False, so landuse layers were silently skipped in mode 1 and the
-# "Show Landuse Labels" toggle had no effect.
+# apply_best_style: mode 1 - landuse polygons must style fills as well as labels.
 # ----------------------------------------------------------------------
 
 def test_mode1_polygon_landuse_layer_is_no_longer_skipped(engine, symbols_loaded):
+    engine.config = types.SimpleNamespace(compactlegend=False)
     layer = make_polygon_layer()
     # Landuse indicators outweigh building indicators
     add_feature(layer, [None, None, "forest", "forest", "Wald 1"])
-    config = _simple_config(road_style_mode=1, enable_landuse_labels=True)
+    config = _landuse_config(road_style_mode=1, enable_landuse_labels=True)
 
     result = engine.apply_best_style(layer, config)
 
@@ -253,16 +270,17 @@ def test_mode1_polygon_landuse_layer_is_no_longer_skipped(engine, symbols_loaded
 
 
 def test_mode1_polygon_landuse_layer_respects_label_toggle(engine, symbols_loaded):
+    engine.config = types.SimpleNamespace(compactlegend=False)
     layer = make_polygon_layer()
     add_feature(layer, [None, None, "forest", "forest", "Wald 1"])
 
-    config_labels_on = _simple_config(road_style_mode=1, enable_landuse_labels=True)
+    config_labels_on = _landuse_config(road_style_mode=1, enable_landuse_labels=True)
     engine.apply_best_style(layer, config_labels_on)
     assert layer.labeling() is not None
 
     layer2 = make_polygon_layer()
     add_feature(layer2, [None, None, "forest", "forest", "Wald 2"])
-    config_labels_off = _simple_config(road_style_mode=1, enable_landuse_labels=False)
+    config_labels_off = _landuse_config(road_style_mode=1, enable_landuse_labels=False)
     engine.apply_best_style(layer2, config_labels_off)
     assert layer2.labeling() is None
 
@@ -275,17 +293,176 @@ def test_mode1_polygon_landuse_layer_respects_label_toggle(engine, symbols_loade
 # ----------------------------------------------------------------------
 
 def test_mode2_polygon_landuse_layer_respects_label_toggle(engine, symbols_loaded):
+    engine.config = types.SimpleNamespace(compactlegend=False)
     layer_on = make_polygon_layer()
     add_feature(layer_on, [None, None, "forest", "forest", "Wald 1"])
-    config_on = _simple_config(road_style_mode=2, enable_landuse_labels=True)
+    config_on = _landuse_config(road_style_mode=2, enable_landuse_labels=True)
     engine.apply_best_style(layer_on, config_on)
     assert layer_on.labeling() is not None
 
     layer_off = make_polygon_layer()
     add_feature(layer_off, [None, None, "forest", "forest", "Wald 2"])
-    config_off = _simple_config(road_style_mode=2, enable_landuse_labels=False)
+    config_off = _landuse_config(road_style_mode=2, enable_landuse_labels=False)
     engine.apply_best_style(layer_off, config_off)
     assert layer_off.labeling() is None
+
+
+@pytest.mark.parametrize("mode", [0, 1, 2])
+def test_landuse_modes_apply_base_colors_without_building_outlines(engine, mode):
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    from qgis.PyQt.QtCore import Qt
+
+    layer = make_polygon_layer("gis_osm_landuse_a_free",
+                               fields="field=fclass:string&field=name:string")
+    add_feature(layer, ["forest", "Forest"])
+    add_feature(layer, ["residential", "Residential"])
+
+    result = engine.apply_best_style(layer, _landuse_config(road_style_mode=mode))
+
+    assert result["success"] is True
+    renderer = layer.renderer()
+    assert renderer.type() == "categorizedSymbol"
+    categories = {str(category.value()): category for category in renderer.categories()}
+    assert categories["forest"].symbol().color().name() == "#add19e"
+    assert categories["residential"].symbol().color().name() == "#f2eae2"
+    for value in ("forest", "residential"):
+        symbol_layer = categories[value].symbol().symbolLayer(0)
+        assert symbol_layer.strokeStyle() == Qt.PenStyle.NoPen
+
+
+@pytest.mark.parametrize("mode", [1, 2])
+def test_landuse_gui_symbols_override_base_without_affecting_other_categories(engine, mode):
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    from qgis.core import QgsFillSymbol, QgsStyle
+
+    style = QgsStyle.defaultStyle()
+    symbol_name = "__landuse_regression_test__"
+    style.addSymbol(symbol_name, QgsFillSymbol.createSimple({"color": "#123456"}))
+    try:
+        layer = make_polygon_layer("landuse", fields="field=fclass:string&field=name:string")
+        add_feature(layer, ["forest", "Forest"])
+        add_feature(layer, ["residential", "Residential"])
+        config = _landuse_config(road_style_mode=mode, custom_mappings=[
+            {"geom": "Polygon", "value": "forest", "style": symbol_name, "label": "Custom forest"}
+        ])
+        legend_updates = []
+        layer.rendererChanged.connect(lambda: legend_updates.append(
+            [category.label() for category in layer.renderer().categories()]))
+        result = engine.apply_best_style(layer, config)
+        assert result["success"] is True
+        categories = {str(category.value()): category for category in layer.renderer().categories()}
+        assert categories["forest"].symbol().color().name() == "#123456"
+        assert categories["forest"].label() == "Custom forest"
+        assert categories["residential"].symbol().color().name() == "#f2eae2"
+        assert "Custom forest" in legend_updates[-1]
+    finally:
+        style.removeSymbol(symbol_name)
+
+
+@pytest.mark.parametrize("mode", [1, 2])
+def test_landuse_missing_base_rules_report_failure(engine, mode):
+    layer = make_polygon_layer("landuse", fields="field=fclass:string")
+    add_feature(layer, ["forest"])
+    result = engine.apply_best_style(layer, _simple_config(road_style_mode=mode))
+    assert result["success"] is False
+    assert result["message"]
+
+
+@pytest.mark.parametrize("custom_mapping", [False, True])
+def test_landuse_mode1_compacts_legend_and_other_modes_restore_it(engine, custom_mapping):
+    from qgis.PyQt import sip
+    from qgis.PyQt.QtCore import Qt
+    from qgis.core import QgsFillSymbol, QgsLayerTreeModel, QgsProject, QgsStyle
+
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    project = QgsProject.instance()
+    style = QgsStyle.defaultStyle()
+    symbol_name = "__landuse_compact_legend_test__"
+    style.addSymbol(symbol_name, QgsFillSymbol.createSimple({"color": "#123456"}))
+    layer = make_polygon_layer("landuse", fields="field=fclass:string&field=name:string")
+    add_feature(layer, ["forest", "Forest"])
+    add_feature(layer, ["residential", "Residential"])
+    project.addMapLayer(layer)
+    model = QgsLayerTreeModel(project.layerTreeRoot())
+    try:
+        node = project.layerTreeRoot().findLayer(layer.id())
+        mappings = [{
+            "geom": "Polygon", "value": "forest", "style": symbol_name, "label": "Custom forest"
+        }] if custom_mapping else []
+        for mode in (1, 1, 2, 1, 0):
+            result = engine.apply_best_style(layer, _landuse_config(
+                road_style_mode=mode, custom_mappings=mappings))
+            assert result["success"] is True
+            model.refreshLayerLegend(node)
+            labels = [item.data(Qt.ItemDataRole.DisplayRole) for item in model.layerLegendNodes(node)]
+            if mode == 1:
+                assert labels == (["Custom forest", "Andere Werte"] if custom_mapping else ["Andere Werte"])
+            elif mode == 2 and custom_mapping:
+                assert set(labels) == {"Custom forest", "residential"}
+            else:
+                assert set(labels) == {"forest", "residential"}
+            categories = {str(category.value()): category for category in layer.renderer().categories()}
+            assert len(categories) == 2
+            assert categories["residential"].symbol().color().name() == "#f2eae2"
+            assert categories["forest"].symbol().color().name() == (
+                "#123456" if custom_mapping and mode != 0 else "#add19e")
+    finally:
+        sip.delete(model)
+        project.removeMapLayer(layer.id())
+        style.removeSymbol(symbol_name)
+
+
+def test_landuse_missing_custom_symbol_reports_failure(engine):
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    layer = make_polygon_layer("landuse", fields="field=fclass:string")
+    add_feature(layer, ["forest"])
+    result = engine.apply_best_style(layer, _landuse_config(custom_mappings=[
+        {"geom": "Polygon", "value": "forest", "style": "__missing_symbol__"}
+    ]))
+    assert result["success"] is False
+    assert "__missing_symbol__" in result["message"]
+
+
+def test_landuse_switching_modes_resets_labels_and_keeps_base_symbols(engine):
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    layer = make_polygon_layer("landuse", fields="field=fclass:string&field=name:string")
+    add_feature(layer, ["forest", "Forest"])
+    for mode in (2, 0, 1, 0):
+        result = engine.apply_best_style(layer, _landuse_config(
+            road_style_mode=mode, custom_mappings=[]))
+        assert result["success"] is True
+        assert layer.labelsEnabled() is (mode != 0)
+        categories = layer.renderer().categories()
+        assert categories[0].symbol().color().name() == "#add19e"
+
+
+def test_landuse_mode0_ignores_gui_symbols(engine):
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    layer = make_polygon_layer("landuse", fields="field=fclass:string")
+    add_feature(layer, ["forest"])
+    result = engine.apply_best_style(layer, _landuse_config(
+        road_style_mode=0, custom_mappings=[
+            {"geom": "Polygon", "value": "forest", "style": "__missing_symbol__"}
+        ]))
+    assert result["success"] is True
+    categories = layer.renderer().categories()
+    assert categories[0].symbol().color().name() == "#add19e"
+
+
+@pytest.mark.parametrize("penstyle, expected", [("nopen", "NoPen"), ("solid", "SolidLine")])
+def test_fill_symbol_respects_outline_style(engine, penstyle, expected):
+    from qgis.PyQt.QtCore import Qt
+    from style_config import LineStyleDef
+
+    symbol = engine.create_fill_symbol(LineStyleDef(penstyle=penstyle))
+    assert symbol.symbolLayer(0).strokeStyle() == getattr(Qt.PenStyle, expected)
+
+
+@pytest.mark.parametrize("value", ["residential", "commercial", "industrial", "retail"])
+def test_landuse_name_identifies_layers_without_natural_classes(engine, value):
+    layer = make_polygon_layer("gis_osm_landuse_a_free", fields="field=fclass:string")
+    add_feature(layer, [value])
+    assert engine._is_landuse_layer(layer) is True
 
 
 # ----------------------------------------------------------------------
