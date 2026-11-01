@@ -84,6 +84,7 @@ class PluginConfig:
     usefallbackstyleforunknownvalues: bool = True
     allownamemismatchfallback: bool = True
     compactlegend: bool = True 
+    legend_display: str | None = None
     style_profiles: list = field(default_factory=list)
     layerrulesets: list = field(default_factory=list)
 
@@ -281,11 +282,15 @@ def _parse_style_profile(data):
 def _parse_plugin_config(data):
     if not isinstance(data, dict):
         return PluginConfig()
+    legend_display = data.get("legend_display")
+    if legend_display not in (None, "all", "compact"):
+        raise ValueError("legend_display muss all oder compact sein.")
 
     style_profiles_raw = _get_first(data, "style_profiles", "styleProfiles", default=[])
     layerrulesets_raw = _get_first(data, "layerrulesets", "layer_rulesets", default=[])
 
     return PluginConfig(
+        legend_display=legend_display,
         usefallbackstyleforunknownvalues=_as_bool(
             _get_first(data, "usefallbackstyleforunknownvalues", "use_fallback_style_for_unknown_values", default=True),
             True

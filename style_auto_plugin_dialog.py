@@ -60,6 +60,15 @@ class StyleAutoPluginDialog(QDialog):
         global_mode_layout.addWidget(self.mode_combo)
 
         self.main_layout.addLayout(global_mode_layout)
+        legend_layout = QHBoxLayout()
+        legend_layout.addWidget(QLabel(self.tr("Legendenanzeige:"), self))
+        self.legend_combo = QComboBox(self)
+        self.legend_combo.addItem(self.tr("Alle Kategorien"), "all")
+        self.legend_combo.addItem(self.tr("Nur Einzelstile + Andere Werte"), "compact")
+        self.legend_combo.setCurrentIndex(self.legend_combo.findData(self._legend_display_for_config(self.config)))
+        self.legend_combo.currentIndexChanged.connect(self.auto_save_settings)
+        legend_layout.addWidget(self.legend_combo)
+        self.main_layout.addLayout(legend_layout)
         self.main_layout.addWidget(
             QLabel("----------------------------------------------------------------------------------------", self))
 
@@ -333,6 +342,7 @@ class StyleAutoPluginDialog(QDialog):
 
         # 2. Persist values into the config dict for QGIS
         self.config["road_style_mode"] = self.mode_combo.currentIndex()
+        self.config["legend_display"] = self.legend_combo.currentData()
         self.config["enable_advanced_road_features"] = self.cb_road_base.isChecked()
         self.config["enable_advanced_building_features"] = self.cb_building_base.isChecked()
         self.config["enable_advanced_point_features"] = self.cb_point_base.isChecked()
@@ -372,6 +382,13 @@ class StyleAutoPluginDialog(QDialog):
         except (OSError, TypeError, ValueError) as error:
             output.cancelWriting()
             QMessageBox.warning(self, self.tr("Configuration error"), str(error))
+
+    @staticmethod
+    def _legend_display_for_config(data):
+        display = data.get("legend_display")
+        if display is not None:
+            return display
+        return "compact" if int(data.get("road_style_mode", 2)) in (1, 3) else "all"
 
     @staticmethod
     def _validate_configuration(data):
@@ -419,6 +436,7 @@ class StyleAutoPluginDialog(QDialog):
             self.config.clear()
             self.config.update(data)
             self.mode_combo.setCurrentIndex(data.get("road_style_mode", 2))
+            self.legend_combo.setCurrentIndex(self.legend_combo.findData(self._legend_display_for_config(data)))
             for key, checkbox in (
                 ("enable_advanced_road_features", self.cb_road_base),
                 ("enable_advanced_building_features", self.cb_building_base),

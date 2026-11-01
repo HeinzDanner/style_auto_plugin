@@ -1,4 +1,5 @@
 import os
+from functools import wraps
 import qgis.utils
 
 from qgis.PyQt.QtCore import Qt, QPointF
@@ -59,6 +60,18 @@ def _normal_composition_mode():
 
 
 QT_NORMAL_COMPOSITION_MODE = _normal_composition_mode()
+
+def _styling_operation(method):
+    @wraps(method)
+    def run(self, *args, **kwargs):
+        if self._value_cache is not None:
+            return method(self, *args, **kwargs)
+        self._value_cache = {}
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self._value_cache = None
+    return run
 
 
 
@@ -146,6 +159,7 @@ class StyleEngine:
         self.logger = logger
         self.config = config
         self._symbol_cache = {}
+        self._value_cache = None
 
         # --- Independent runtime flags (core features) ---
         self.enable_labels = False  # For road labeling
@@ -272,16 +286,51 @@ class StyleEngine:
         if field_index == -1:
             return set()
 
-        try:
-            values = layer.uniqueValues(field_index, limit)
-        except TypeError:
-            values = layer.uniqueValues(field_index)
+        values = self._unique_values(layer, field_index, limit)
 
         return {
             str(value).strip().lower()
             for value in values
             if value is not None and str(value).strip() != ""
         }
+
+    def _unique_values(self, layer, field_index, limit=-1, *, provider=False):
+        key = (layer.id(), field_index, limit, provider)
+        if self._value_cache is not None and key in self._value_cache:
+            return self._value_cache[key]
+        source = layer.dataProvider() if provider else layer
+        try:
+            values = source.uniqueValues(field_index, limit)
+        except TypeError:
+            values = source.uniqueValues(field_index)
+        if self._value_cache is not None:
+            self._value_cache[key] = values
+        return values
+
+    def _classification_values(self, layer, field_or_expression):
+        field_index = layer.fields().indexFromName(field_or_expression)
+        if field_index >= 0:
+            # uniqueValues can retain old values from the edit buffer.
+            if layer.isEditable():
+                key = (layer.id(), "edited", field_index)
+                if self._value_cache is not None and key in self._value_cache:
+                    return self._value_cache[key]
+                request = QgsFeatureRequest()
+                request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
+                request.setSubsetOfAttributes([field_index])
+                result = ({feature[field_index] for feature in layer.getFeatures(request)}, True)
+                if self._value_cache is not None:
+                    self._value_cache[key] = result
+                return result
+            return self._unique_values(layer, field_index), True
+        key = (layer.id(), "expression", field_or_expression)
+        if self._value_cache is not None and key in self._value_cache:
+            return self._value_cache[key]
+        values, ok = QgsVectorLayerUtils.getValues(layer, field_or_expression)
+        result = (values, ok)
+        if self._value_cache is not None:
+            self._value_cache[key] = result
+        return result
 
     def normalize_list_lower(self, values):
         if not values:
@@ -400,10 +449,7 @@ class StyleEngine:
             if idx < 0:
                 continue
 
-            try:
-                raw_vals = layer.uniqueValues(idx, sample_limit)
-            except TypeError:
-                raw_vals = layer.uniqueValues(idx)
+            raw_vals = self._unique_values(layer, idx, sample_limit)
 
             values = []
             for v in raw_vals:
@@ -574,12 +620,11 @@ class StyleEngine:
         """
         Bonus score for clear landuse/building cases based on attribute values.
         """
-        provider = layer.dataProvider()
         field_index = layer.fields().indexOf(field_name)
         if field_index < 0:
             return 0, []
 
-        unique_values = provider.uniqueValues(field_index)
+        unique_values = self._unique_values(layer, field_index, provider=True)
         reasons = []
         bonus = 0
 
@@ -769,7 +814,7 @@ class StyleEngine:
 
         layer_values = {
             str(value)
-            for value in layer.uniqueValues(field_index)
+            for value in self._unique_values(layer, field_index)
             if value is not None and str(value).strip() != ""
         }
 
@@ -786,15 +831,8 @@ class StyleEngine:
         if idx < 0:
             return []
 
-        values = set()
-        for f in layer.getFeatures():
-            v = f[idx]
-            # Ignore None/NULL
-            if v is None:
-                continue
-            values.add(v)
-
-        return list(values)
+        values, _ = self._classification_values(layer, field_name)
+        return [value for value in values if value is not None]
 
     def apply_categorized_renderer_with_fallback(self, layer, fieldruleset, detected_field_name=None):
         missing_values=''
@@ -1104,7 +1142,11 @@ class StyleEngine:
         fclass_idx = fields.indexOf("fclass")
         building_score = 0
         landuse_score = 0
-        for feature in layer.getFeatures(QgsFeatureRequest().setLimit(50)):
+        request = QgsFeatureRequest().setLimit(50)
+        request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
+        request.setSubsetOfAttributes([index for index in (
+            building_idx, landuse_idx, type_idx, fclass_idx) if index >= 0])
+        for feature in layer.getFeatures(request):
             if building_idx >= 0:
                 value = str(feature.attribute(building_idx)).strip().lower()
                 if value and value not in ("no", "null", "none"):
@@ -1186,6 +1228,43 @@ class StyleEngine:
     def bind_project_legend_groups(self, *args):
         self.bind_legend_groups()
 
+    def _apply_legend_display(self, layer, config, geometry, *, legacy_compact=False):
+        display = self._get_attr(config, "legend_display", default=None)
+        if display == "compact" or (display is None and legacy_compact):
+            self._compact_options_legend(layer, config, geometry)
+        else:
+            self._restore_options_legend(layer)
+            self._hide_empty_fallback_legend(layer)
+
+    def _hide_empty_fallback_legend(self, layer):
+        renderer = layer.renderer()
+        node = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
+        if node is None or not isinstance(renderer, QgsCategorizedSymbolRenderer):
+            return
+        categories = renderer.categories()
+        fallback_indices = [
+            index for index, category in enumerate(categories) if category.value() in ("", None)
+        ]
+        if not fallback_indices:
+            return
+        values, ok = self._classification_values(layer, renderer.classAttribute())
+        if not ok:
+            return
+        explicit_values = {
+            str(item)
+            for category in categories if category.value() not in ("", None)
+            for item in (category.value() if isinstance(category.value(), list) else [category.value()])
+        }
+        if any(str(value) not in explicit_values for value in values):
+            return
+        key = "legend/node-order"
+        node.setCustomProperty("style_auto_plugin/options_legend", {
+            key: {"exists": key in node.customProperties(), "value": node.customProperty(key)}
+        })
+        order = QgsMapLayerLegendUtils.legendNodeOrder(node)
+        QgsMapLayerLegendUtils.setLegendNodeOrder(
+            node, [index for index in order if index not in fallback_indices])
+
     def _compact_options_legend(self, layer, config, geometry):
         node = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
         if node is None:
@@ -1195,7 +1274,7 @@ class StyleEngine:
         order = []
         rest_index = None
         if isinstance(renderer, QgsCategorizedSymbolRenderer):
-            values, ok = QgsVectorLayerUtils.getValues(layer, renderer.classAttribute())
+            values, ok = self._classification_values(layer, renderer.classAttribute())
             if not ok:
                 return
             present = {str(value).strip().lower() for value in values}
@@ -1272,7 +1351,7 @@ class StyleEngine:
             if not available_fields:
                 return self._result(False, "Kein Zuordnungsfeld für GUI-Symbole gefunden.", level="warning")
             values_by_field = {
-                name: layer.uniqueValues(layer.fields().indexOf(name)) for name in available_fields
+                name: self._unique_values(layer, layer.fields().indexOf(name)) for name in available_fields
             }
             def matching_count(name):
                 keys = {GEOFABRIK_CODE_MAP.get(value, value) if name == "code" else value for value in entries}
@@ -1295,7 +1374,7 @@ class StyleEngine:
         renderer = renderer.clone()
         present = None
         if allow_single:
-            values, ok = QgsVectorLayerUtils.getValues(layer, renderer.classAttribute())
+            values, ok = self._classification_values(layer, renderer.classAttribute())
             if not ok:
                 return self._result(False, "Das Zuordnungsfeld des vorhandenen Stils ist ungültig.",
                                     level="warning")
@@ -1336,9 +1415,10 @@ class StyleEngine:
             if label:
                 renderer.updateCategoryLabel(index, label)
         if replacements:
-            layer.setRenderer(renderer.clone())
+            layer.setRenderer(renderer)
         return self._result(True)
 
+    @_styling_operation
     def apply_options(self, layer, config, plugin_dir=None):
         if layer is None:
             return self._result(False, "Kein Layer übergeben.", level="warning")
@@ -1378,11 +1458,12 @@ class StyleEngine:
                     enable_smoothing=self._get_attr(config, "enable_building_edge_smoothing", default=True),
                     enable_shadow=self._get_attr(config, "enable_building_drop_shadow", default=True),
                     enable_labels=self.enable_building_labels)
-        self._compact_options_legend(layer, config, geometry)
+        self._apply_legend_display(layer, config, geometry, legacy_compact=True)
         layer.setRenderer(layer.renderer().clone())
         layer.triggerRepaint()
         return self._result(True, "Optionen auf vorhandenen Stil angewendet (ohne Basisstyling).")
 
+    @_styling_operation
     def apply_best_style(self, layer, config, plugin_dir=None):
         if layer is None:
             return self._result(False, "Kein Layer übergeben.", level="warning")
@@ -1390,7 +1471,6 @@ class StyleEngine:
         # ==============================================================================
         # ==============================================================================
         geom_type = self.get_layer_geometry_type_name(layer)
-        is_landuse = geom_type == "polygon" and self._is_landuse_layer(layer)
 
         # ==============================================================================
         # Determine the mode and cartographic booleans once (previously duplicated here)
@@ -1404,6 +1484,7 @@ class StyleEngine:
 
         if mode == 3:
             return self.apply_options(layer, config, plugin_dir)
+        is_landuse = geom_type == "polygon" and self._is_landuse_layer(layer)
         self._restore_options_legend(layer)
 
         self.sync_runtime_bools_from_config(config)
@@ -1473,8 +1554,6 @@ class StyleEngine:
                     if not custom_result["success"]:
                         return custom_result
                     self.apply_landuse_advanced_features(layer, enable_labels=enable_landuse_labels)
-                    self._compact_options_legend(layer, config, "polygon")
-                    layer.setRenderer(layer.renderer().clone())
 
                     result = {"success": True, "message": "Reines Flächen-Einzelstyling angewendet (Modus 1)."}
 
@@ -1599,6 +1678,18 @@ class StyleEngine:
         # Safety net: if result is still None
         if result is None:
             result = {"success": True, "message": "Layer im Standard-Look belassen"}
+        if result.get("success"):
+            legend_config = config
+            if mode == 0:
+                legend_config = {
+                    "legend_display": self._get_attr(config, "legend_display", default=None),
+                    "custom_mappings": [],
+                }
+            self._apply_legend_display(
+                layer, legend_config, geom_type, legacy_compact=mode == 1 and is_landuse)
+            if (self._get_attr(config, "legend_display", default=None) is not None
+                    or mode == 1 and is_landuse):
+                layer.setRenderer(layer.renderer().clone())
         return result
 
     def _execute_base_styling(self, layer, config, plugin_dir=None):
@@ -2064,8 +2155,6 @@ class StyleEngine:
         # The following lines stay at method scope with the intended indentation.
         renderer_field = self.detect_best_building_field(layer, config=config, sample_limit=200)
 
-        renderer_field = self.detect_best_building_field(layer, config=config, sample_limit=200)
-
         if not renderer_field:
             renderer_field = "type"
             if hasattr(renderer, "classAttribute") and renderer.classAttribute():
@@ -2098,10 +2187,6 @@ class StyleEngine:
                             field_mapping[t_val] = {
                                 "symbol_name": entry.get("style", ""), "legend_label": entry.get("label", "")
                             }
-
-        idx_dbg = fields.indexOf(renderer_field)
-        if idx_dbg >= 0:
-            unique_vals = layer.uniqueValues(idx_dbg)
 
         if options_only:
             for symbol in renderer.symbols(QgsRenderContext()):
@@ -2485,7 +2570,7 @@ class StyleEngine:
                     unique_values = []
                     idx = fields.indexOf(renderer_field)
                     if idx >= 0:
-                        unique_values = layer.uniqueValues(idx)
+                        unique_values = self._unique_values(layer, idx)
 
                     # Populate categories in memory
                     for val in unique_values:

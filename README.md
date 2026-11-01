@@ -100,13 +100,44 @@ required for these replacements. Rule-based and graduated renderers are left
 unchanged with a warning. Missing or incompatible mapped symbols also produce a
 warning instead of silently substituting a default symbol.
 
-In mode 3 the layer-tree legend shows only GUI matches for values present in the
+By default, in mode 3 the layer-tree legend shows only GUI matches for values present in the
 layer, plus one **Andere Werte** entry for the remaining visible categories.
 The latter is a representative legend entry: the underlying categories and
 their distinct symbols remain intact. Its checkbox switches all summarized
 categories on or off together; GUI matches remain independently switchable.
 The compact legend and category visibility are saved with the project. Modes 0
 and 2 restore the full legend; landuse in mode 1 also uses a compact legend.
+
+### Choosing the legend display
+
+The configuration dialog provides a separate **Legendenanzeige** selection,
+independent of modes 0 to 3:
+
+- **Alle Kategorien** shows the renderer's categories individually, with their
+  own visibility checkboxes. In mode 3, unmatched categories keep their existing
+  symbols instead of being summarized in the legend.
+- **Nur Einzelstile + Andere Werte** shows present GUI matches separately and
+  summarizes the remaining categories under a shared checkbox.
+
+When opened in the dialog or imported, older configurations without
+`legend_display` are migrated to a concrete choice: modes 0 and 2 use **Alle
+Kategorien**, modes 1 and 3 use **Nur Einzelstile + Andere Werte**. The dialog
+shows only these two choices. Once migrated, changing the styling mode does not
+change the legend selection.
+
+This changes the layer-tree legend, not the map symbols or classification.
+An empty fallback entry ("Andere Werte") is hidden in the full legend when all
+layer values already have explicit categories. Categories remain in the renderer;
+unchecked categories with matching objects are not treated as empty. Applying
+styling again recalculates whether the fallback is needed.
+Mode 1 still creates fallback categories such as "Andere Straßen/Wege";
+the full legend does not split a renderer's fallback into new categories.
+Mode 0 ignores GUI mappings, so the compact choice summarizes its categories
+under "Andere Werte".
+
+The explicit choice is saved as `legend_display: "all"` or `"compact"` in the
+configuration and included in JSON export/import. Loading a configuration updates
+the selection immediately; apply it to the layer with **S**.
 
 ### Saving and loading configurations
 
@@ -186,7 +217,7 @@ JSON file when the dialog is accepted with **Close**. Use **S** to apply them.
 
 The `tests/` directory contains a pytest suite:
 
-The complete suite currently contains **128 passing tests** on both tested QGIS
+The complete suite currently contains **162 passing tests** on both tested QGIS
 versions. GitHub Actions runs only the pure-Python configuration tests; the badge
 does not represent the QGIS-dependent tests.
 
@@ -197,6 +228,8 @@ does not represent the QGIS-dependent tests.
 - `test_config_transfer.py` covers JSON import/export, invalid files, empty
   mapping lists and immediate updates of the open configuration dialog.
   Both also require the QGIS Python interpreter.
+- `test_style_performance.py` checks query reuse, cache cleanup after errors,
+  unsaved edits and expression classifiers, and minimal attribute-only requests.
 
 Run on Windows, for example, with:
 
@@ -205,6 +238,47 @@ Run on Windows, for example, with:
 "C:\Program Files\QGIS 3.44.9\bin\python-qgis-ltr.bat" -m pytest tests -v
 "C:\Program Files\QGIS 4.2.2\bin\python-qgis.bat" -m pytest tests -v
 ```
+
+### Styling performance
+
+Field values are reused within one styling application. The cache is discarded
+afterwards, including on errors, so later applications see updated layer data.
+Provider queries and limited samples remain separate. Edited layers use an
+attribute-only scan for classification to avoid stale values from QGIS's edit
+buffer; expression classifiers retain expression evaluation. Landuse detection
+requests only relevant attributes, without geometry.
+
+An opt-in benchmark covers roads, buildings and landuse in all four modes:
+
+```text
+"C:\Program Files\QGIS 4.2.2\bin\python-qgis.bat" tests\benchmark_styling.py --features 100000 --runs 5 --output styling-benchmark.json
+```
+
+It uses the local configuration and bundled symbols, skips mappings for
+unavailable symbols with a notice, and reports median milliseconds after one
+warm-up. `--engine-ref <Git ref>` measures the engine from a committed revision
+without checking it out; Git must be available to the QGIS interpreter (or set
+`RELEASE_GIT` to its executable). JSON output also records category values, labels,
+visibility and symbol properties for before/after comparison.
+
+A local QGIS 4.2.2 comparison against 0.1.3 used 100,000 in-memory features with
+15 attributes per dataset and five measured runs:
+
+| Dataset / mode | Before | After |
+|---|---:|---:|
+| Roads / 0 | 515 ms | 432 ms |
+| Roads / 3 | 227 ms | 26 ms |
+| Buildings / 0 | 351 ms | 141 ms |
+| Buildings / 3 | 468 ms | 162 ms |
+| Landuse / 0 | 192 ms | 72 ms |
+| Landuse / 1 | 285 ms | 77 ms |
+| Landuse / 3 | 292 ms | 89 ms |
+
+The compared style properties matched in all twelve scenarios. Roads in mode 1
+performed almost no work in this configuration and showed no meaningful gain.
+These figures measure styling preparation, **not map redraw**. Actual gains
+depend on the data provider, layer contents and configuration; they are not
+guaranteed for file/database layers or complex geometries.
 
 ## Usage
 

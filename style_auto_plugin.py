@@ -287,6 +287,10 @@ class StyleAutoPlugin:
 
                         if "road_style_mode" in file_data:
                             setattr(config, "road_style_mode", int(file_data["road_style_mode"]))
+                        legend_display = file_data.get("legend_display")
+                        if legend_display not in (None, "all", "compact"):
+                            raise ValueError("legend_display muss all oder compact sein.")
+                        config.legend_display = legend_display
                         options_only = getattr(config, "road_style_mode", 2) == 3
                         if "custom_mappings" in file_data:
                             setattr(config, "custom_mappings", file_data["custom_mappings"])

@@ -423,6 +423,31 @@ def test_landuse_missing_custom_symbol_reports_failure(engine):
     assert "__missing_symbol__" in result["message"]
 
 
+@pytest.mark.parametrize("mode", [0, 1, 2])
+@pytest.mark.parametrize("display", ["all", "compact"])
+def test_landuse_explicit_legend_choice_is_independent_of_mode(engine, mode, display):
+    from qgis.core import QgsProject, QgsMapLayerLegendUtils
+
+    engine.config = types.SimpleNamespace(compactlegend=False)
+    layer = make_polygon_layer("landuse", fields="field=fclass:string&field=name:string")
+    add_feature(layer, ["forest", "Forest"])
+    add_feature(layer, ["residential", "Residential"])
+    project = QgsProject.instance()
+    project.addMapLayer(layer)
+    try:
+        assert engine.apply_best_style(layer, _landuse_config(
+            road_style_mode=mode, legend_display=display, custom_mappings=[]))["success"]
+        node = project.layerTreeRoot().findLayer(layer.id())
+        assert QgsMapLayerLegendUtils.hasLegendNodeOrder(node) is (display == "compact")
+        if display == "compact":
+            assert len(QgsMapLayerLegendUtils.legendNodeOrder(node)) == 1
+        categories = layer.renderer().categories()
+        assert len(categories) == 2
+        assert [category.symbol().color().name() for category in categories] == ["#add19e", "#f2eae2"]
+    finally:
+        project.removeMapLayer(layer.id())
+
+
 def test_landuse_switching_modes_resets_labels_and_keeps_base_symbols(engine):
     engine.config = types.SimpleNamespace(compactlegend=False)
     layer = make_polygon_layer("landuse", fields="field=fclass:string&field=name:string")

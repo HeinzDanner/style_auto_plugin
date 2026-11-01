@@ -24,6 +24,7 @@ def _mock_file_dialog(monkeypatch, method, path):
 def test_configuration_export_import_roundtrip(dialog, monkeypatch, tmp_path):
     original = {
         "road_style_mode": 3,
+        "legend_display": "all",
         "enable_advanced_road_features": False,
         "enable_advanced_building_features": False,
         "enable_advanced_point_features": False,
@@ -54,6 +55,7 @@ def test_configuration_export_import_roundtrip(dialog, monkeypatch, tmp_path):
     assert dialog.mapping_rows[0]["style"].isEnabled()
     assert dialog.mapping_rows[0]["container"].toolTip()
     assert dialog.mode_combo.currentIndex() == 3
+    assert dialog.legend_combo.currentData() == "all"
     _mock_file_dialog(monkeypatch, "getSaveFileName", target)
     dialog.save_configuration()
     assert json.loads(target.read_text(encoding="utf-8")) == original
@@ -78,6 +80,52 @@ def test_configuration_load_empty_list_replaces_existing_rows(dialog, monkeypatc
     assert not dialog.mapping_rows
     assert dialog.config["custom_mappings"] == []
     assert dialog.mode_combo.currentIndex() == 0
+    assert dialog.legend_combo.currentData() == "all"
+
+
+@pytest.mark.parametrize("display", ["all", "compact", None])
+def test_legend_choice_updates_config_and_loaded_dialog(dialog, monkeypatch, tmp_path, display):
+    dialog.legend_combo.setCurrentIndex(dialog.legend_combo.findData("compact"))
+    dialog.legend_combo.setCurrentIndex(dialog.legend_combo.findData("all"))
+    assert dialog.config["legend_display"] == "all"
+    source = tmp_path / "legend.json"
+    config = {"custom_mappings": []}
+    if display is not None:
+        config["legend_display"] = display
+    source.write_text(json.dumps(config), encoding="utf-8")
+    _mock_file_dialog(monkeypatch, "getOpenFileName", source)
+    dialog.load_configuration()
+    expected = display if display is not None else "all"
+    assert dialog.legend_combo.currentData() == expected
+    assert dialog.config["legend_display"] == expected
+
+
+@pytest.mark.parametrize("mode, expected", [(0, "all"), (1, "compact"), (2, "all"), (3, "compact")])
+def test_legacy_legend_migration_on_open_and_import(dialog, monkeypatch, tmp_path, mode, expected):
+    from qgis.PyQt import sip
+    from style_auto_plugin.style_auto_plugin_dialog import StyleAutoPluginDialog
+
+    config = {"road_style_mode": mode, "custom_mappings": []}
+    reopened = StyleAutoPluginDialog(active_config=copy.deepcopy(config))
+    try:
+        assert reopened.legend_combo.count() == 2
+        assert reopened.legend_combo.currentData() == expected
+        assert reopened.config["legend_display"] == expected
+        reopened.mode_combo.setCurrentIndex((mode + 1) % 4)
+        assert reopened.legend_combo.currentData() == expected
+    finally:
+        reopened.close()
+        sip.delete(reopened)
+    source = tmp_path / "legacy.json"
+    source.write_text(json.dumps(config), encoding="utf-8")
+    _mock_file_dialog(monkeypatch, "getOpenFileName", source)
+    dialog.load_configuration()
+    assert dialog.legend_combo.currentData() == expected
+    assert dialog.config["legend_display"] == expected
+    target = tmp_path / "migrated.json"
+    _mock_file_dialog(monkeypatch, "getSaveFileName", target)
+    dialog.save_configuration()
+    assert json.loads(target.read_text(encoding="utf-8"))["legend_display"] == expected
 
 
 def test_load_updates_visible_dialog_without_reopening(dialog, monkeypatch, tmp_path, qgis_app):

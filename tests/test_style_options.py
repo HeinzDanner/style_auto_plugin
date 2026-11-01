@@ -255,6 +255,94 @@ def test_mode3_legend_only_shows_present_gui_matches_and_one_rest_entry(engine, 
         project.removeMapLayer(layer.id())
 
 
+@pytest.mark.parametrize("extra_value", [None, "unknown", ""])
+def test_full_legend_hides_only_empty_fallback(engine, extra_value):
+    from qgis.core import (
+        QgsCategorizedSymbolRenderer, QgsLineSymbol, QgsRendererCategory,
+        QgsMapLayerLegendUtils, QgsProject,
+    )
+
+    layer = make_line_layer()
+    add_feature(layer, ["unclassified", "Road"])
+    layer.setRenderer(QgsCategorizedSymbolRenderer("fclass", [
+        QgsRendererCategory("unclassified", QgsLineSymbol(), "unclassified", False),
+        QgsRendererCategory("", QgsLineSymbol(), "Andere Werte"),
+    ]))
+    project = QgsProject.instance()
+    project.addMapLayer(layer)
+    try:
+        node = project.layerTreeRoot().findLayer(layer.id())
+        config = {"road_style_mode": 3, "legend_display": "all", "custom_mappings": [],
+                  "enable_advanced_road_features": False, "enable_road_labels": False}
+        assert engine.apply_best_style(layer, config)["success"]
+        assert QgsMapLayerLegendUtils.legendNodeOrder(node) == [0]
+        from qgis.core import QgsLayerTreeModel
+        from qgis.PyQt import sip
+        from qgis.PyQt.QtCore import Qt
+        model = QgsLayerTreeModel(project.layerTreeRoot())
+        try:
+            assert [item.data(Qt.ItemDataRole.DisplayRole) for item in model.layerLegendNodes(node)] == [
+                "unclassified"]
+        finally:
+            sip.delete(model)
+        assert len(layer.renderer().categories()) == 2
+        assert not layer.renderer().categories()[0].renderState()
+        add_feature(layer, [extra_value, "Other"])
+        assert engine.apply_best_style(layer, config)["success"]
+        assert QgsMapLayerLegendUtils.legendNodeOrder(node) == [0, 1]
+        engine._restore_options_legend(layer)
+        assert not QgsMapLayerLegendUtils.hasLegendNodeOrder(node)
+    finally:
+        project.removeMapLayer(layer.id())
+
+
+def test_mode3_full_legend_preserves_symbols_and_independent_checkboxes(engine):
+    from qgis.core import (
+        QgsCategorizedSymbolRenderer, QgsLineSymbol, QgsRendererCategory,
+        QgsMapLayerLegendUtils, QgsProject, QgsLayerTreeModel,
+    )
+    from qgis.PyQt import sip
+    from qgis.PyQt.QtCore import Qt
+
+    layer = make_line_layer()
+    for value in ("primary", "path", "track"):
+        add_feature(layer, [value, value])
+    layer.setRenderer(QgsCategorizedSymbolRenderer("fclass", [
+        QgsRendererCategory(value, QgsLineSymbol.createSimple({"line_color": color}), value)
+        for value, color in (("primary", "#123456"), ("path", "#654321"), ("track", "#abcdef"))
+    ]))
+    project = QgsProject.instance()
+    project.addMapLayer(layer)
+    model = QgsLayerTreeModel(project.layerTreeRoot())
+    try:
+        node = project.layerTreeRoot().findLayer(layer.id())
+        config = {"road_style_mode": 3, "custom_mappings": [],
+                  "enable_advanced_road_features": False, "enable_road_labels": False}
+        for display in ("compact", "all", "compact", "all"):
+            config["legend_display"] = display
+            assert engine.apply_best_style(layer, config)["success"]
+            model.refreshLayerLegend(node)
+            categories = layer.renderer().categories()
+            assert [category.symbol().color().name() for category in categories] == [
+                "#123456", "#654321", "#abcdef"]
+            if display == "all":
+                assert not node.customProperty("style_auto_plugin/rest_categories", {})
+                assert not QgsMapLayerLegendUtils.hasLegendNodeOrder(node)
+                assert [item.data(Qt.ItemDataRole.DisplayRole) for item in model.layerLegendNodes(node)] == [
+                    "primary", "path", "track"]
+                item = model.layerLegendNodes(node)[1]
+                item.setData(Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+                assert [category.renderState() for category in layer.renderer().categories()] == [
+                    True, False, True]
+                item.setData(Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
+                del item
+            else:
+                assert len(model.layerLegendNodes(node)) == 1
+    finally:
+        sip.delete(model)
+        project.removeMapLayer(layer.id())
+
+
 def test_mode3_legend_restores_previous_user_legend_customizations(engine):
     from qgis.core import QgsMapLayerLegendUtils, QgsProject
 

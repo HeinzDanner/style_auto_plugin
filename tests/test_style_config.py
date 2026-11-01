@@ -173,6 +173,17 @@ def test_parse_plugin_config_non_dict_returns_default():
     assert isinstance(config, sc.PluginConfig)
 
 
+@pytest.mark.parametrize("display", [None, "all", "compact"])
+def test_parse_legend_display(display):
+    assert sc._parse_plugin_config({"legend_display": display}).legend_display == display
+
+
+@pytest.mark.parametrize("display", ["invalid", False, 1, []])
+def test_parse_invalid_legend_display(display):
+    with pytest.raises(ValueError, match="legend_display"):
+        sc._parse_plugin_config({"legend_display": display})
+
+
 # ----------------------------------------------------------------------
 # get_config() - file I/O
 # ----------------------------------------------------------------------
