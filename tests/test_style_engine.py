@@ -518,6 +518,53 @@ def test_mode1_point_layer_disabled_reports_failure(engine, symbols_loaded):
     assert result["success"] is False
 
 
+@pytest.mark.parametrize("previous_field", [None, "fclass", "code"])
+@pytest.mark.parametrize("classification_field", ["fclass", "amenity", "code"])
+def test_mode1_hospital_mapping_is_independent_of_previous_renderer(
+        engine, previous_field, classification_field):
+    import os
+    from qgis.core import (
+        QgsCategorizedSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory, QgsRenderContext,
+    )
+
+    fields = ("field=fclass:string&field=code:integer" if classification_field == "fclass"
+              else "field=amenity:string&field=code:integer" if classification_field == "amenity"
+              else "field=code:integer")
+    layer = make_point_layer(fields=fields)
+    for kind, code in (("hospital", 2110), ("pharmacy", 2101), ("pharmacy", 2101)):
+        add_feature(layer, [code] if classification_field == "code" else [kind, code])
+    if previous_field is not None:
+        field = previous_field if layer.fields().indexOf(previous_field) >= 0 else classification_field
+        layer.setRenderer(QgsCategorizedSymbolRenderer(field, [
+            QgsRendererCategory("", QgsMarkerSymbol(), "Previous fallback"),
+        ]))
+    config = _simple_config(
+        road_style_mode=1, enable_advanced_point_features=True,
+        custom_mappings=[{"geom": "Point", "value": "hospital",
+                          "style": "hospital.svg", "label": "Krankenhaus"}])
+    plugin_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    assert engine.apply_best_style(layer, config, plugin_dir)["success"]
+    renderer = layer.renderer()
+    assert renderer.classAttribute() == classification_field
+    context = QgsRenderContext()
+    renderer.startRender(context, layer.fields())
+    try:
+        svg_count = 0
+        fallback_count = 0
+        for feature in layer.getFeatures():
+            symbol = renderer.symbolForFeature(feature, context)
+            assert symbol is not None
+            if symbol.symbolLayer(0).layerType() == "SvgMarker":
+                assert feature["code"] == 2110
+                svg_count += 1
+            else:
+                assert feature["code"] == 2101
+                fallback_count += 1
+        assert (svg_count, fallback_count) == (1, 2)
+    finally:
+        renderer.stopRender(context)
+
+
 def test_mode1_point_layer_without_fclass_field_reports_failure(engine, symbols_loaded):
     layer = make_point_layer(fields="field=name:string")  # No 'fclass' field present
     add_feature(layer, ["Krankenhaus 1"])

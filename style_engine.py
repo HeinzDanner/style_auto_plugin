@@ -114,7 +114,7 @@ GEOFABRIK_CODE_MAP = {
     "station": "2001",         "subway_entrance": "2002",
     "bus_stop": "2003",        "pier": "2004",
     "airport": "2041",         "airfield": "2042",
-    "hospital": "2101",        "pharmacy": "2102",
+    "hospital": "2110",        "pharmacy": "2101",
     "clinic": "2103",          "doctors": "2104",
     "dentist": "2105",         "veterinary": "2106",
     "police": "2111",          "fire_station": "2112",
@@ -1583,7 +1583,8 @@ class StyleEngine:
 
 
             elif geom_type == "point":
-                if enable_point_features and layer.fields().indexOf("fclass") >= 0:
+                if enable_point_features and any(
+                        layer.fields().indexOf(name) >= 0 for name in ("fclass", "amenity", "code")):
                     success = self.apply_point_symbol_mapping(
                         layer, plugin_dir=plugin_dir, config=config, reines_einzelstyling=True
                     )
@@ -2422,7 +2423,13 @@ class StyleEngine:
 
         # Determine dynamically which field QGIS is currently using
         renderer_field = "fclass"
-        if hasattr(renderer, "classAttribute") and renderer.classAttribute():
+        if reines_einzelstyling and fields.indexOf("fclass") >= 0:
+            renderer_field = fields.at(fields.indexOf("fclass")).name()
+        elif reines_einzelstyling and fields.indexOf("amenity") >= 0:
+            renderer_field = fields.at(fields.indexOf("amenity")).name()
+        elif reines_einzelstyling and fields.indexOf("code") >= 0:
+            renderer_field = "code"
+        elif hasattr(renderer, "classAttribute") and renderer.classAttribute():
             renderer_field = renderer.classAttribute().strip().lower()
         elif fields.indexOf("amenity") >= 0:
             renderer_field = "amenity"

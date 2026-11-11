@@ -132,6 +132,9 @@ unchecked categories with matching objects are not treated as empty. Applying
 styling again recalculates whether the fallback is needed.
 Mode 1 still creates fallback categories such as "Andere Straßen/Wege";
 the full legend does not split a renderer's fallback into new categories.
+For point layers, mode 1 chooses `fclass`, then `amenity`, then `code`,
+independently of the previous renderer. Geofabrik POI codes map hospital to
+`2110` and pharmacy to `2101`.
 Mode 0 ignores GUI mappings, so the compact choice summarizes its categories
 under "Andere Werte".
 
@@ -158,11 +161,11 @@ flag or preventing the user from correcting the name.
 
 ## Requirements
 
-- QGIS 3.28 or newer
+- QGIS 3.44.9 or newer (up to QGIS 4.99)
 - A valid configuration file in the plugin directory
 
 The current regression suite has been run on QGIS **3.44.9 (Qt5)** and
-**4.2.2 (Qt6)**. QGIS 3.28 has not been separately verified by these runs.
+**4.2.2 (Qt6)**. The minimum supported version is QGIS 3.44.9.
 
 ## Plugin Structure
 
@@ -217,7 +220,7 @@ JSON file when the dialog is accepted with **Close**. Use **S** to apply them.
 
 The `tests/` directory contains a pytest suite:
 
-The complete suite currently contains **162 passing tests** on both tested QGIS
+The complete suite currently contains **171 passing tests** on both tested QGIS
 versions. GitHub Actions runs only the pure-Python configuration tests; the badge
 does not represent the QGIS-dependent tests.
 
